@@ -360,7 +360,7 @@ app.post('/api/upload', upload.fields([
 
     // ── Step 4: log to Supabase ──
     if (session.userId) {
-      await supabase.from('upload_history').insert({
+      const { error: dbErr } = await supabase.from('upload_history').insert({
         user_id: session.userId,
         title,
         description,
@@ -370,7 +370,8 @@ app.post('/api/upload', upload.fields([
         youtube_video_id: youtubeVideoId,
         upload_status: 'success',
         youtube_url: `https://www.youtube.com/watch?v=${youtubeVideoId}`,
-      }).catch(e => console.warn('DB log error:', e.message));
+      });
+      if (dbErr) console.warn('DB log error:', dbErr.message);
     }
 
     // ── Done ──
