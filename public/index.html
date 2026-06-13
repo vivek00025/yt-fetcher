@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YouTube Metadata Helper</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #242424;
+    --border-hover: #333;
+    --accent: #ff3c3c;
+    --accent-dim: rgba(255,60,60,0.12);
+    --accent-hover: #ff5555;
+    --text: #ebebeb;
+    --muted: #666;
+    --muted2: #999;
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+    display: flex;
+    justify-content: center;
+  }
+  .wrap { max-width: 720px; width: 100%; }
+
+  /* ── Header ── */
+  .header { margin-bottom: 36px; }
+  .header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header h1 .icon {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  .header p { color: var(--muted2); font-size: 0.875rem; margin-top: 6px; line-height: 1.6; }
+
+  /* ── Auth Banner ── */
+  #authBanner {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  #authBanner.logged-out { background: #140e0e; border-color: rgba(255,60,60,0.25); }
+  #authBanner.logged-in { background: #0a140e; border-color: rgba(74,222,128,0.25); }
+  .auth-info { display: flex; align-items: center; gap: 10px; }
+  .auth-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .auth-dot.off { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .auth-dot.on { background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .auth-text { font-size: 0.875rem; }
+  .auth-text strong { display: block; font-weight: 600; }
+  .auth-text span { color: var(--muted2); font-size: 0.8rem; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s, transform 0.1s;
+    white-space: nowrap;
+    font-family: inherit;
+    text-decoration: none;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--border-hover); background: #222; }
+  .btn-ghost { background: transparent; color: var(--muted2); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--border-hover); }
+  .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+
+  /* ── Steps ── */
+  .step {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .step-header {
+    padding: 16px 18px;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .step-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--accent-dim);
+    border: 1px solid rgba(255,60,60,0.3);
+    color: var(--accent);
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-num.done {
+    background: rgba(74,222,128,0.12);
+    border-color: rgba(74,222,128,0.3);
+    color: var(--success);
+  }
+  .step-title { font-weight: 600; font-size: 0.925rem; }
+  .step-body { padding: 18px; border-top: 1px solid var(--border); background: var(--surface); }
+  .step.locked { opacity: 0.45; pointer-events: none; }
+  .step.locked .step-body { display: none; }
+
+  /* ── Inputs ── */
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  label.field-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--muted2);
+    margin-bottom: 6px;
+    letter-spacing: 0.02em;
+  }
+  input[type="text"], textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: #0f0f0f;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  input[type="text"]:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+
+  /* ── Search results ── */
+  .search-results { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .video-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .video-card:hover { border-color: var(--accent); background: #1a1212; }
+  .video-card.selected { border-color: var(--accent); background: #1a1212; }
+  .video-card img {
+    width: 80px; height: 45px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+    background: #222;
+  }
+  .video-info { min-width: 0; flex: 1; }
+  .video-title {
+    font-size: 0.85rem;
+    font-weight: 500;
+    line-height: 1.35;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .video-meta { font-size: 0.75rem; color: var(--muted2); margin-top: 3px; }
+  .video-select-btn {
+    font-size: 0.75rem;
+    padding: 5px 10px;
+    border-radius: 6px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(255,60,60,0.3);
+    color: var(--accent);
+    cursor: pointer;
+    white-space: nowrap;
+    font-weight: 600;
+    font-family: inherit;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .video-select-btn:hover { background: rgba(255,60,60,0.22); }
+
+  /* ── Metadata display ── */
+  .meta-block {
+    background: #0f0f0f;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted2);
+    margin-top: 6px;
+  }
+  .meta-row { margin-bottom: 12px; }
+  .meta-row:last-child { margin-bottom: 0; }
+  .meta-row-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .meta-label { font-size: 0.78rem; font-weight: 500; color: var(--muted2); letter-spacing: 0.04em; text-transform: uppercase; }
+
+  /* ── Tags ── */
+  .tags-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.78rem;
+    color: var(--muted2);
+  }
+
+  /* ── Status ── */
+  .status {
+    font-size: 0.82rem;
+    margin-top: 8px;
+    min-height: 1.2em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .status.error { color: #ff8080; }
+  .status.success { color: var(--success); }
+  .status.loading { color: var(--muted2); }
+  .spinner {
+    width: 12px; height: 12px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Stats chips ── */
+  .stats-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+  .stat-chip {
+    font-size: 0.78rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    color: var(--muted2);
+  }
+  .stat-chip strong { color: var(--text); }
+
+  /* ── Final card ── */
+  .final-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  a.btn { display: inline-flex; }
+
+  /* ── Divider ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 6px 0; }
+
+  /* ── Utility ── */
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .flex1 { flex: 1; }
+  .mt8 { margin-top: 8px; }
+  .mt14 { margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <h1><span class="icon">▶</span> YouTube Metadata Helper</h1>
+    <p>Search YouTube, grab a top video's title / description / tags via the official API, then craft your own optimized metadata.</p>
+  </div>
+
+  <!-- ── Auth banner ── -->
+  <div id="authBanner" class="logged-out">
+    <div class="auth-info">
+      <div class="auth-dot off" id="authDot"></div>
+      <div class="auth-text">
+        <strong id="authTitle">Not connected</strong>
+        <span id="authSub">Sign in with Google to use the YouTube Data API</span>
+      </div>
+    </div>
+    <div id="authActions">
+      <a href="/auth/login" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.93 12.19c0-.47-.04-.82-.11-1.18H12v2.14h3.33c-.14.77-.57 1.94-1.64 2.72l2.56 1.98c1.49-1.38 2.35-3.41 2.35-5.66H17.93z"/></svg>
+        Sign in with Google
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Step 1: Search ── -->
+  <div class="step locked" id="step1">
+    <div class="step-header">
+      <div class="step-num" id="step1Num">1</div>
+      <div class="step-title">Search YouTube</div>
+    </div>
+    <div class="step-body">
+      <div class="field">
+        <label class="field-label">Your video topic or keyword</label>
+        <div class="row">
+          <input type="text" id="ideaInput" placeholder="e.g. best budget gaming laptops 2026" class="flex1"
+            onkeydown="if(event.key==='Enter') searchYouTube()">
+          <button class="btn btn-primary" onclick="searchYouTube()">Search</button>
+        </div>
+      </div>
+      <div class="status" id="searchStatus"></div>
+      <div class="search-results" id="searchResults"></div>
+    </div>
+  </div>
+
+  <!-- ── Step 2: Metadata ── -->
+  <div class="step locked" id="step2">
+    <div class="step-header">
+      <div class="step-num" id="step2Num">2</div>
+      <div class="step-title">Source video metadata</div>
+    </div>
+    <div class="step-body">
+      <div class="status" id="metaStatus"></div>
+      <div id="metaContent" style="display:none;">
+        <div class="meta-row">
+          <div class="meta-row-header">
+            <span class="meta-label">Title</span>
+            <button class="btn btn-ghost btn-sm" onclick="copyField('srcTitle')">Copy</button>
+          </div>
+          <div class="meta-block" id="srcTitle"></div>
+        </div>
+        <div id="statsRow" class="stats-row"></div>
+        <div class="meta-row mt14">
+          <div class="meta-row-header">
+            <span class="meta-label">Description</span>
+            <button class="btn btn-ghost btn-sm" onclick="copyField('srcDesc')">Copy</button>
+          </div>
+          <div class="meta-block" id="srcDesc"></div>
+        </div>
+        <div class="meta-row mt14">
+          <div class="meta-row-header">
+            <span class="meta-label">Tags <span id="tagCount" style="font-weight:400;"></span></span>
+            <button class="btn btn-ghost btn-sm" onclick="copyTags()">Copy all</button>
+          </div>
+          <div class="tags-wrap" id="srcTags"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 3: Your metadata ── -->
+  <div class="step locked" id="step3">
+    <div class="step-header">
+      <div class="step-num" id="step3Num">3</div>
+      <div class="step-title">Build your metadata</div>
+    </div>
+    <div class="step-body">
+      <p style="font-size:0.82rem; color:var(--muted2); margin-bottom:14px; line-height:1.6;">
+        Pre-filled from the source. Edit to make it yours — don't copy verbatim to avoid duplicate-content issues.
+      </p>
+      <div class="field">
+        <label class="field-label">Your Title</label>
+        <input type="text" id="yourTitle">
+      </div>
+      <div class="field">
+        <label class="field-label">Your Description</label>
+        <textarea id="yourDesc" style="min-height:120px;"></textarea>
+      </div>
+      <div class="field">
+        <label class="field-label">Your Tags (comma-separated)</label>
+        <textarea id="yourTags" style="min-height:70px;"></textarea>
+      </div>
+      <button class="btn btn-primary mt8" onclick="finalize()">Prepare Final Metadata →</button>
+    </div>
+  </div>
+
+  <!-- ── Step 4: Final ── -->
+  <div class="step locked" id="step4">
+    <div class="step-header">
+      <div class="step-num" id="step4Num">4</div>
+      <div class="step-title">Ready for YouTube Studio</div>
+    </div>
+    <div class="step-body">
+      <div class="meta-row">
+        <div class="meta-row-header">
+          <span class="meta-label">Title</span>
+          <button class="btn btn-ghost btn-sm" onclick="copyField('finalTitle')">Copy</button>
+        </div>
+        <textarea id="finalTitle" readonly style="min-height:60px; font-family:inherit; font-size:0.9rem;"></textarea>
+      </div>
+      <div class="meta-row mt14">
+        <div class="meta-row-header">
+          <span class="meta-label">Description</span>
+          <button class="btn btn-ghost btn-sm" onclick="copyField('finalDesc')">Copy</button>
+        </div>
+        <textarea id="finalDesc" readonly style="min-height:150px; font-family:inherit; font-size:0.875rem;"></textarea>
+      </div>
+      <div class="meta-row mt14">
+        <div class="meta-row-header">
+          <span class="meta-label">Tags</span>
+          <button class="btn btn-ghost btn-sm" onclick="copyField('finalTags')">Copy</button>
+        </div>
+        <textarea id="finalTags" readonly style="min-height:70px; font-family:inherit; font-size:0.875rem;"></textarea>
+      </div>
+      <div class="final-actions">
+        <a href="https://studio.youtube.com" target="_blank" class="btn btn-primary">Open YouTube Studio ↗</a>
+        <button class="btn btn-secondary" onclick="startOver()">Start Over</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let rawTags = [];
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  // Handle URL params from OAuth redirect
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('auth') === 'success' || params.get('auth_error')) {
+    window.history.replaceState({}, '', '/');
+  }
+
+  await checkAuth();
+});
+
+async function checkAuth() {
+  try {
+    const res = await fetch('/auth/status');
+    const data = await res.json();
+    setAuthState(data.authenticated);
+  } catch {
+    setAuthState(false);
+  }
+}
+
+function setAuthState(authenticated) {
+  const banner = document.getElementById('authBanner');
+  const dot = document.getElementById('authDot');
+  const title = document.getElementById('authTitle');
+  const sub = document.getElementById('authSub');
+  const actions = document.getElementById('authActions');
+  const step1 = document.getElementById('step1');
+
+  if (authenticated) {
+    banner.className = 'logged-in';
+    dot.className = 'auth-dot on';
+    title.textContent = 'Connected to YouTube';
+    sub.textContent = 'Using YouTube Data API v3 — your searches are authenticated';
+    actions.innerHTML = '<a href="/auth/logout" class="btn btn-ghost btn-sm">Sign out</a>';
+    step1.classList.remove('locked');
+  } else {
+    banner.className = 'logged-out';
+    dot.className = 'auth-dot off';
+    title.textContent = 'Not connected';
+    sub.textContent = 'Sign in with Google to use the YouTube Data API';
+    actions.innerHTML = '<a href="/auth/login" class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.93 12.19c0-.47-.04-.82-.11-1.18H12v2.14h3.33c-.14.77-.57 1.94-1.64 2.72l2.56 1.98c1.49-1.38 2.35-3.41 2.35-5.66H17.93z"/></svg>Sign in with Google</a>';
+    step1.classList.add('locked');
+  }
+}
+
+// ── Search ─────────────────────────────────────────────────────────────────────
+async function searchYouTube() {
+  const idea = document.getElementById('ideaInput').value.trim();
+  const status = document.getElementById('searchStatus');
+  const results = document.getElementById('searchResults');
+
+  if (!idea) { setStatus(status, 'Enter a topic first.', 'error'); return; }
+
+  setStatus(status, 'Searching...', 'loading', true);
+  results.innerHTML = '';
+
+  try {
+    const res = await fetch('/api/search?q=' + encodeURIComponent(idea));
+    if (res.status === 401) { setStatus(status, 'Session expired — please sign in again.', 'error'); return; }
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    setStatus(status, `Found ${data.videos.length} videos. Pick the top result to use as reference.`, 'success');
+    results.innerHTML = '';
+    data.videos.forEach((v, i) => {
+      const card = document.createElement('div');
+      card.className = 'video-card';
+      card.innerHTML = `
+        <img src="${v.thumbnail || ''}" alt="" loading="lazy">
+        <div class="video-info">
+          <div class="video-title">${escHtml(v.title)}</div>
+          <div class="video-meta">${escHtml(v.channelTitle)} · ${new Date(v.publishedAt).getFullYear()}</div>
+        </div>
+        <button class="video-select-btn" onclick="selectVideo('${v.videoId}', this)">Use this</button>
+      `;
+      results.appendChild(card);
+    });
+  } catch (err) {
+    setStatus(status, 'Error: ' + err.message, 'error');
+  }
+}
+
+// ── Fetch Metadata ─────────────────────────────────────────────────────────────
+async function selectVideo(videoId, btn) {
+  // Visual feedback
+  document.querySelectorAll('.video-card').forEach(c => c.classList.remove('selected'));
+  btn.closest('.video-card').classList.add('selected');
+  btn.textContent = 'Loading...';
+
+  const status = document.getElementById('metaStatus');
+  const content = document.getElementById('metaContent');
+  const step2 = document.getElementById('step2');
+  const step2Num = document.getElementById('step2Num');
+
+  step2.classList.remove('locked');
+  content.style.display = 'none';
+  setStatus(status, 'Fetching metadata via YouTube Data API...', 'loading', true);
+
+  try {
+    const res = await fetch('/api/video/' + videoId);
+    if (res.status === 401) { setStatus(status, 'Session expired — please sign in again.', 'error'); return; }
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // Populate source view
+    document.getElementById('srcTitle').textContent = data.title;
+    document.getElementById('srcDesc').textContent = data.description || '(no description)';
+
+    rawTags = data.tags || [];
+    const tagsWrap = document.getElementById('srcTags');
+    document.getElementById('tagCount').textContent = rawTags.length ? `(${rawTags.length})` : '';
+    tagsWrap.innerHTML = rawTags.length
+      ? rawTags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')
+      : '<span style="color:var(--muted2); font-size:0.82rem;">No tags on this video</span>';
+
+    // Stats
+    const statsRow = document.getElementById('statsRow');
+    const stats = data.statistics || {};
+    statsRow.innerHTML = [
+      stats.viewCount && `<div class="stat-chip"><strong>${fmtNum(stats.viewCount)}</strong> views</div>`,
+      stats.likeCount && `<div class="stat-chip"><strong>${fmtNum(stats.likeCount)}</strong> likes</div>`,
+      stats.commentCount && `<div class="stat-chip"><strong>${fmtNum(stats.commentCount)}</strong> comments</div>`,
+    ].filter(Boolean).join('');
+
+    content.style.display = 'block';
+    setStatus(status, '', '');
+    step2Num.className = 'step-num done';
+    step2Num.textContent = '✓';
+
+    // Pre-fill step 3
+    document.getElementById('yourTitle').value = data.title;
+    document.getElementById('yourDesc').value = data.description || '';
+    document.getElementById('yourTags').value = rawTags.join(', ');
+
+    document.getElementById('step3').classList.remove('locked');
+    btn.textContent = 'Selected ✓';
+
+  } catch (err) {
+    setStatus(status, 'Error: ' + err.message, 'error');
+    btn.textContent = 'Use this';
+  }
+}
+
+// ── Finalize ───────────────────────────────────────────────────────────────────
+function finalize() {
+  const title = document.getElementById('yourTitle').value;
+  const desc = document.getElementById('yourDesc').value;
+  const tags = document.getElementById('yourTags').value;
+
+  document.getElementById('finalTitle').value = title;
+  document.getElementById('finalDesc').value = desc;
+  document.getElementById('finalTags').value = tags;
+
+  const step4 = document.getElementById('step4');
+  const step3Num = document.getElementById('step3Num');
+  step3Num.className = 'step-num done';
+  step3Num.textContent = '✓';
+  step4.classList.remove('locked');
+  step4.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function startOver() {
+  window.location.reload();
+}
+
+function setStatus(el, msg, type, spinner = false) {
+  el.className = 'status ' + type;
+  el.innerHTML = (spinner ? '<div class="spinner"></div>' : '') + (msg ? escHtml(msg) : '');
+}
+
+function escHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function fmtNum(n) {
+  return Number(n).toLocaleString();
+}
+
+function copyField(id) {
+  const el = document.getElementById(id);
+  const text = el.value !== undefined ? el.value : el.textContent;
+  navigator.clipboard.writeText(text).catch(() => {});
+}
+
+function copyTags() {
+  navigator.clipboard.writeText(rawTags.join(', ')).catch(() => {});
+}
+</script>
+</body>
+</html>
