@@ -6,7 +6,6 @@
 <title>YouTube Metadata Helper</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
   :root {
     --bg: #0a0a0a;
     --surface: #111111;
@@ -24,281 +23,125 @@
     --radius: 10px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Inter', -apple-system, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 40px 20px 80px;
-    display: flex;
-    justify-content: center;
-  }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 40px 20px 80px; display: flex; justify-content: center; }
   .wrap { max-width: 720px; width: 100%; }
 
-  /* ── Header ── */
-  .header { margin-bottom: 36px; }
-  .header h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .header h1 .icon {
-    width: 32px; height: 32px;
-    background: var(--accent);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1rem;
-    flex-shrink: 0;
-  }
+  .header { margin-bottom: 32px; }
+  .header h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.03em; display: flex; align-items: center; gap: 10px; }
+  .header h1 .icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
   .header p { color: var(--muted2); font-size: 0.875rem; margin-top: 6px; line-height: 1.6; }
 
-  /* ── Auth Banner ── */
-  #authBanner {
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px 18px;
-    margin-bottom: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
+  #authBanner { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   #authBanner.logged-out { background: #140e0e; border-color: rgba(255,60,60,0.25); }
   #authBanner.logged-in { background: #0a140e; border-color: rgba(74,222,128,0.25); }
   .auth-info { display: flex; align-items: center; gap: 10px; }
-  .auth-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
+  .auth-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .auth-dot.off { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
   .auth-dot.on { background: var(--success); box-shadow: 0 0 6px var(--success); }
-  .auth-text { font-size: 0.875rem; }
-  .auth-text strong { display: block; font-weight: 600; }
+  .auth-text strong { display: block; font-weight: 600; font-size: 0.875rem; }
   .auth-text span { color: var(--muted2); font-size: 0.8rem; }
 
-  /* ── Buttons ── */
-  .btn {
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 9px 16px;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-    transition: background 0.15s, transform 0.1s;
-    white-space: nowrap;
-    font-family: inherit;
-    text-decoration: none;
-  }
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 8px; font-size: 0.875rem; font-weight: 600; cursor: pointer; border: none; transition: background 0.15s, transform 0.1s; white-space: nowrap; font-family: inherit; text-decoration: none; }
   .btn:active { transform: scale(0.98); }
   .btn-primary { background: var(--accent); color: white; }
   .btn-primary:hover { background: var(--accent-hover); }
   .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-  .btn-secondary:hover { border-color: var(--border-hover); background: #222; }
+  .btn-secondary:hover { border-color: var(--border-hover); }
   .btn-ghost { background: transparent; color: var(--muted2); border: 1px solid var(--border); }
   .btn-ghost:hover { color: var(--text); border-color: var(--border-hover); }
-  .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+  .btn-success { background: #166534; color: var(--success); border: 1px solid rgba(74,222,128,0.3); }
+  .btn-success:hover { background: #1a7a3e; }
+  .btn-sm { padding: 5px 11px; font-size: 0.8rem; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
-  /* ── Steps ── */
-  .step {
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    margin-bottom: 16px;
-    overflow: hidden;
-  }
-  .step-header {
-    padding: 16px 18px;
-    background: var(--surface);
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .step-num {
-    width: 26px; height: 26px;
-    border-radius: 50%;
-    background: var(--accent-dim);
-    border: 1px solid rgba(255,60,60,0.3);
-    color: var(--accent);
-    font-size: 0.8rem;
-    font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-  .step-num.done {
-    background: rgba(74,222,128,0.12);
-    border-color: rgba(74,222,128,0.3);
-    color: var(--success);
-  }
+  .step { border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
+  .step-header { padding: 15px 18px; background: var(--surface); display: flex; align-items: center; gap: 12px; }
+  .step-num { width: 26px; height: 26px; border-radius: 50%; background: var(--accent-dim); border: 1px solid rgba(255,60,60,0.3); color: var(--accent); font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-num.done { background: rgba(74,222,128,0.12); border-color: rgba(74,222,128,0.3); color: var(--success); }
   .step-title { font-weight: 600; font-size: 0.925rem; }
+  .step-subtitle { font-size: 0.78rem; color: var(--muted2); margin-left: auto; }
   .step-body { padding: 18px; border-top: 1px solid var(--border); background: var(--surface); }
-  .step.locked { opacity: 0.45; pointer-events: none; }
+  .step.locked { opacity: 0.42; pointer-events: none; }
   .step.locked .step-body { display: none; }
 
-  /* ── Inputs ── */
+  label.fl { display: block; font-size: 0.8rem; font-weight: 500; color: var(--muted2); margin-bottom: 6px; letter-spacing: 0.02em; }
+  input[type="text"], textarea, select { width: 100%; padding: 10px 12px; background: #0f0f0f; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.9rem; font-family: inherit; transition: border-color 0.15s; outline: none; }
+  input[type="text"]:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+  select option { background: #111; }
   .field { margin-bottom: 14px; }
   .field:last-child { margin-bottom: 0; }
-  label.field-label {
-    display: block;
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--muted2);
-    margin-bottom: 6px;
-    letter-spacing: 0.02em;
-  }
-  input[type="text"], textarea {
-    width: 100%;
-    padding: 10px 12px;
-    background: #0f0f0f;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-size: 0.9rem;
-    font-family: inherit;
-    transition: border-color 0.15s;
-    outline: none;
-  }
-  input[type="text"]:focus, textarea:focus { border-color: var(--accent); }
-  textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
 
-  /* ── Search results ── */
+  /* search results */
   .search-results { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
-  .video-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
-  }
+  .video-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
   .video-card:hover { border-color: var(--accent); background: #1a1212; }
   .video-card.selected { border-color: var(--accent); background: #1a1212; }
-  .video-card img {
-    width: 80px; height: 45px;
-    object-fit: cover;
-    border-radius: 4px;
-    flex-shrink: 0;
-    background: #222;
-  }
+  .video-card img { width: 80px; height: 45px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: #222; }
   .video-info { min-width: 0; flex: 1; }
-  .video-title {
-    font-size: 0.85rem;
-    font-weight: 500;
-    line-height: 1.35;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
+  .video-title { font-size: 0.85rem; font-weight: 500; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .video-meta { font-size: 0.75rem; color: var(--muted2); margin-top: 3px; }
-  .video-select-btn {
-    font-size: 0.75rem;
-    padding: 5px 10px;
-    border-radius: 6px;
-    background: var(--accent-dim);
-    border: 1px solid rgba(255,60,60,0.3);
-    color: var(--accent);
-    cursor: pointer;
-    white-space: nowrap;
-    font-weight: 600;
-    font-family: inherit;
-    transition: background 0.15s;
-    flex-shrink: 0;
-  }
-  .video-select-btn:hover { background: rgba(255,60,60,0.22); }
+  .use-btn { font-size: 0.75rem; padding: 5px 10px; border-radius: 6px; background: var(--accent-dim); border: 1px solid rgba(255,60,60,0.3); color: var(--accent); cursor: pointer; white-space: nowrap; font-weight: 600; font-family: inherit; transition: background 0.15s; flex-shrink: 0; }
+  .use-btn:hover { background: rgba(255,60,60,0.22); }
 
-  /* ── Metadata display ── */
-  .meta-block {
-    background: #0f0f0f;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px;
-    font-size: 0.875rem;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-break: break-word;
-    max-height: 200px;
-    overflow-y: auto;
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--muted2);
-    margin-top: 6px;
-  }
-  .meta-row { margin-bottom: 12px; }
+  /* meta display */
+  .meta-block { background: #0f0f0f; border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 0.875rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; color: var(--muted2); margin-top: 6px; }
+  .meta-row { margin-bottom: 14px; }
   .meta-row:last-child { margin-bottom: 0; }
-  .meta-row-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 4px;
-  }
+  .meta-row-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
   .meta-label { font-size: 0.78rem; font-weight: 500; color: var(--muted2); letter-spacing: 0.04em; text-transform: uppercase; }
-
-  /* ── Tags ── */
   .tags-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-  .tag {
-    display: inline-flex;
-    align-items: center;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 3px 10px;
-    font-size: 0.78rem;
-    color: var(--muted2);
-  }
+  .tag { display: inline-flex; align-items: center; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; font-size: 0.78rem; color: var(--muted2); }
+  .stats-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .stat-chip { font-size: 0.78rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; color: var(--muted2); }
+  .stat-chip strong { color: var(--text); }
 
-  /* ── Status ── */
-  .status {
-    font-size: 0.82rem;
-    margin-top: 8px;
-    min-height: 1.2em;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
+  /* file drop zones */
+  .drop-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 24px; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; position: relative; }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: var(--accent-dim); }
+  .drop-zone.has-file { border-color: rgba(74,222,128,0.4); background: rgba(74,222,128,0.05); }
+  .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .drop-icon { font-size: 1.8rem; margin-bottom: 8px; }
+  .drop-label { font-size: 0.875rem; font-weight: 500; }
+  .drop-sub { font-size: 0.78rem; color: var(--muted2); margin-top: 4px; }
+  .drop-filename { font-size: 0.82rem; color: var(--success); margin-top: 6px; font-weight: 500; }
+
+  /* upload form two-col */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 540px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* privacy select */
+  .privacy-row { display: flex; gap: 8px; }
+  .privacy-opt { flex: 1; }
+  .privacy-opt input[type="radio"] { display: none; }
+  .privacy-opt label { display: flex; flex-direction: column; align-items: center; padding: 10px; background: #0f0f0f; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 0.82rem; font-weight: 500; transition: border-color 0.15s, background 0.15s; text-align: center; gap: 4px; }
+  .privacy-opt label .picon { font-size: 1.2rem; }
+  .privacy-opt label .psub { font-size: 0.72rem; color: var(--muted2); font-weight: 400; }
+  .privacy-opt input:checked + label { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+
+  /* progress */
+  .progress-wrap { margin-top: 14px; }
+  .progress-bar-bg { background: var(--surface2); border-radius: 999px; height: 6px; overflow: hidden; margin-bottom: 8px; }
+  .progress-bar { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s ease; width: 0%; }
+  .progress-msg { font-size: 0.82rem; color: var(--muted2); }
+
+  /* done card */
+  .done-card { background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.25); border-radius: 10px; padding: 18px; margin-top: 14px; }
+  .done-card h3 { font-size: 1rem; font-weight: 600; color: var(--success); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .done-links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+
+  .status { font-size: 0.82rem; margin-top: 8px; min-height: 1.2em; display: flex; align-items: center; gap: 6px; }
   .status.error { color: #ff8080; }
   .status.success { color: var(--success); }
   .status.loading { color: var(--muted2); }
-  .spinner {
-    width: 12px; height: 12px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    flex-shrink: 0;
-  }
+  .spinner { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ── Stats chips ── */
-  .stats-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
-  .stat-chip {
-    font-size: 0.78rem;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 4px 10px;
-    color: var(--muted2);
-  }
-  .stat-chip strong { color: var(--text); }
-
-  /* ── Final card ── */
-  .final-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
-  a.btn { display: inline-flex; }
-
-  /* ── Divider ── */
-  .divider { border: none; border-top: 1px solid var(--border); margin: 6px 0; }
-
-  /* ── Utility ── */
   .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .flex1 { flex: 1; }
   .mt8 { margin-top: 8px; }
   .mt14 { margin-top: 14px; }
+  .tip { font-size: 0.8rem; color: var(--muted2); line-height: 1.6; margin-bottom: 14px; }
 </style>
 </head>
 <body>
@@ -306,10 +149,10 @@
 
   <div class="header">
     <h1><span class="icon">▶</span> YouTube Metadata Helper</h1>
-    <p>Search YouTube, grab a top video's title / description / tags via the official API, then craft your own optimized metadata.</p>
+    <p>Search YouTube, grab a top video's metadata via the official API, then upload your own video with that metadata.</p>
   </div>
 
-  <!-- ── Auth banner ── -->
+  <!-- Auth Banner -->
   <div id="authBanner" class="logged-out">
     <div class="auth-info">
       <div class="auth-dot off" id="authDot"></div>
@@ -319,25 +162,21 @@
       </div>
     </div>
     <div id="authActions">
-      <a href="/auth/login" class="btn btn-primary">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.93 12.19c0-.47-.04-.82-.11-1.18H12v2.14h3.33c-.14.77-.57 1.94-1.64 2.72l2.56 1.98c1.49-1.38 2.35-3.41 2.35-5.66H17.93z"/></svg>
-        Sign in with Google
-      </a>
+      <a href="/auth/login" class="btn btn-primary">Sign in with Google</a>
     </div>
   </div>
 
-  <!-- ── Step 1: Search ── -->
+  <!-- Step 1: Search -->
   <div class="step locked" id="step1">
     <div class="step-header">
-      <div class="step-num" id="step1Num">1</div>
+      <div class="step-num" id="sn1">1</div>
       <div class="step-title">Search YouTube</div>
     </div>
     <div class="step-body">
       <div class="field">
-        <label class="field-label">Your video topic or keyword</label>
+        <label class="fl">Your video topic or keyword</label>
         <div class="row">
-          <input type="text" id="ideaInput" placeholder="e.g. best budget gaming laptops 2026" class="flex1"
-            onkeydown="if(event.key==='Enter') searchYouTube()">
+          <input type="text" id="ideaInput" placeholder="e.g. best budget gaming laptops 2026" class="flex1" onkeydown="if(event.key==='Enter') searchYouTube()">
           <button class="btn btn-primary" onclick="searchYouTube()">Search</button>
         </div>
       </div>
@@ -346,117 +185,172 @@
     </div>
   </div>
 
-  <!-- ── Step 2: Metadata ── -->
+  <!-- Step 2: Source metadata -->
   <div class="step locked" id="step2">
     <div class="step-header">
-      <div class="step-num" id="step2Num">2</div>
+      <div class="step-num" id="sn2">2</div>
       <div class="step-title">Source video metadata</div>
     </div>
     <div class="step-body">
       <div class="status" id="metaStatus"></div>
       <div id="metaContent" style="display:none;">
         <div class="meta-row">
-          <div class="meta-row-header">
-            <span class="meta-label">Title</span>
-            <button class="btn btn-ghost btn-sm" onclick="copyField('srcTitle')">Copy</button>
-          </div>
+          <div class="meta-row-header"><span class="meta-label">Title</span><button class="btn btn-ghost btn-sm" onclick="copyField('srcTitle')">Copy</button></div>
           <div class="meta-block" id="srcTitle"></div>
         </div>
         <div id="statsRow" class="stats-row"></div>
         <div class="meta-row mt14">
-          <div class="meta-row-header">
-            <span class="meta-label">Description</span>
-            <button class="btn btn-ghost btn-sm" onclick="copyField('srcDesc')">Copy</button>
-          </div>
+          <div class="meta-row-header"><span class="meta-label">Description</span><button class="btn btn-ghost btn-sm" onclick="copyField('srcDesc')">Copy</button></div>
           <div class="meta-block" id="srcDesc"></div>
         </div>
         <div class="meta-row mt14">
-          <div class="meta-row-header">
-            <span class="meta-label">Tags <span id="tagCount" style="font-weight:400;"></span></span>
-            <button class="btn btn-ghost btn-sm" onclick="copyTags()">Copy all</button>
-          </div>
+          <div class="meta-row-header"><span class="meta-label">Tags <span id="tagCount"></span></span><button class="btn btn-ghost btn-sm" onclick="copyTags()">Copy all</button></div>
           <div class="tags-wrap" id="srcTags"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ── Step 3: Your metadata ── -->
+  <!-- Step 3: Edit metadata -->
   <div class="step locked" id="step3">
     <div class="step-header">
-      <div class="step-num" id="step3Num">3</div>
-      <div class="step-title">Build your metadata</div>
+      <div class="step-num" id="sn3">3</div>
+      <div class="step-title">Edit your metadata</div>
     </div>
     <div class="step-body">
-      <p style="font-size:0.82rem; color:var(--muted2); margin-bottom:14px; line-height:1.6;">
-        Pre-filled from the source. Edit to make it yours — don't copy verbatim to avoid duplicate-content issues.
-      </p>
+      <p class="tip">Pre-filled from the source video. Tweak to make it yours — avoid copying verbatim.</p>
       <div class="field">
-        <label class="field-label">Your Title</label>
-        <input type="text" id="yourTitle">
+        <label class="fl">Title</label>
+        <input type="text" id="yourTitle" maxlength="100">
       </div>
       <div class="field">
-        <label class="field-label">Your Description</label>
+        <label class="fl">Description</label>
         <textarea id="yourDesc" style="min-height:120px;"></textarea>
       </div>
       <div class="field">
-        <label class="field-label">Your Tags (comma-separated)</label>
+        <label class="fl">Tags (comma-separated, max 500 chars)</label>
         <textarea id="yourTags" style="min-height:70px;"></textarea>
       </div>
-      <button class="btn btn-primary mt8" onclick="finalize()">Prepare Final Metadata →</button>
+      <button class="btn btn-primary mt8" onclick="goToUpload()">Continue to Upload →</button>
     </div>
   </div>
 
-  <!-- ── Step 4: Final ── -->
+  <!-- Step 4: Upload -->
   <div class="step locked" id="step4">
     <div class="step-header">
-      <div class="step-num" id="step4Num">4</div>
-      <div class="step-title">Ready for YouTube Studio</div>
+      <div class="step-num" id="sn4">4</div>
+      <div class="step-title">Upload to YouTube</div>
     </div>
     <div class="step-body">
-      <div class="meta-row">
-        <div class="meta-row-header">
-          <span class="meta-label">Title</span>
-          <button class="btn btn-ghost btn-sm" onclick="copyField('finalTitle')">Copy</button>
+      <p class="tip">Add your MP4 and (optionally) a thumbnail. The title, description, and tags from Step 3 will be used automatically.</p>
+
+      <div class="two-col" style="margin-bottom:14px;">
+        <!-- Video file -->
+        <div>
+          <label class="fl">Video File (MP4)</label>
+          <div class="drop-zone" id="videoDrop">
+            <input type="file" id="videoFile" accept="video/mp4,video/*" onchange="onVideoFile(this)">
+            <div class="drop-icon">🎬</div>
+            <div class="drop-label">Drop MP4 here</div>
+            <div class="drop-sub">or click to browse</div>
+            <div class="drop-filename" id="videoName"></div>
+          </div>
         </div>
-        <textarea id="finalTitle" readonly style="min-height:60px; font-family:inherit; font-size:0.9rem;"></textarea>
-      </div>
-      <div class="meta-row mt14">
-        <div class="meta-row-header">
-          <span class="meta-label">Description</span>
-          <button class="btn btn-ghost btn-sm" onclick="copyField('finalDesc')">Copy</button>
+
+        <!-- Thumbnail -->
+        <div>
+          <label class="fl">Thumbnail (optional)</label>
+          <div class="drop-zone" id="thumbDrop">
+            <input type="file" id="thumbFile" accept="image/jpeg,image/png,image/webp" onchange="onThumbFile(this)">
+            <div class="drop-icon">🖼️</div>
+            <div class="drop-label">Drop image here</div>
+            <div class="drop-sub">JPG, PNG or WebP · max 2 MB</div>
+            <div class="drop-filename" id="thumbName"></div>
+          </div>
+          <div id="thumbPreviewWrap" style="margin-top:8px; display:none;">
+            <img id="thumbPreview" style="width:100%; border-radius:6px; max-height:90px; object-fit:cover;">
+          </div>
         </div>
-        <textarea id="finalDesc" readonly style="min-height:150px; font-family:inherit; font-size:0.875rem;"></textarea>
       </div>
-      <div class="meta-row mt14">
-        <div class="meta-row-header">
-          <span class="meta-label">Tags</span>
-          <button class="btn btn-ghost btn-sm" onclick="copyField('finalTags')">Copy</button>
+
+      <!-- Category & Privacy -->
+      <div class="two-col" style="margin-bottom:14px;">
+        <div class="field" style="margin-bottom:0;">
+          <label class="fl">Category</label>
+          <select id="categoryId">
+            <option value="1">Film & Animation</option>
+            <option value="2">Autos & Vehicles</option>
+            <option value="10">Music</option>
+            <option value="15">Pets & Animals</option>
+            <option value="17">Sports</option>
+            <option value="20">Gaming</option>
+            <option value="22" selected>People & Blogs</option>
+            <option value="23">Comedy</option>
+            <option value="24">Entertainment</option>
+            <option value="25">News & Politics</option>
+            <option value="26">Howto & Style</option>
+            <option value="27">Education</option>
+            <option value="28">Science & Technology</option>
+            <option value="29">Nonprofits & Activism</option>
+          </select>
         </div>
-        <textarea id="finalTags" readonly style="min-height:70px; font-family:inherit; font-size:0.875rem;"></textarea>
+        <div class="field" style="margin-bottom:0;">
+          <label class="fl">Privacy</label>
+          <div class="privacy-row">
+            <div class="privacy-opt">
+              <input type="radio" name="privacy" id="priv-private" value="private" checked>
+              <label for="priv-private"><span class="picon">🔒</span>Private<span class="psub">Only you</span></label>
+            </div>
+            <div class="privacy-opt">
+              <input type="radio" name="privacy" id="priv-unlisted" value="unlisted">
+              <label for="priv-unlisted"><span class="picon">🔗</span>Unlisted<span class="psub">Link only</span></label>
+            </div>
+            <div class="privacy-opt">
+              <input type="radio" name="privacy" id="priv-public" value="public">
+              <label for="priv-public"><span class="picon">🌍</span>Public<span class="psub">Everyone</span></label>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="final-actions">
-        <a href="https://studio.youtube.com" target="_blank" class="btn btn-primary">Open YouTube Studio ↗</a>
-        <button class="btn btn-secondary" onclick="startOver()">Start Over</button>
+
+      <!-- Summary of what will be used -->
+      <div id="metaSummary" style="background:#0f0f0f; border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:14px; font-size:0.82rem; line-height:1.6;">
+        <div style="color:var(--muted2); margin-bottom:4px; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">Metadata that will be applied</div>
+        <div><span style="color:var(--muted2);">Title:</span> <span id="sumTitle" style="color:var(--text);"></span></div>
+        <div style="margin-top:3px;"><span style="color:var(--muted2);">Tags:</span> <span id="sumTags" style="color:var(--text);"></span></div>
       </div>
+
+      <button class="btn btn-primary" id="uploadBtn" onclick="startUpload()">🚀 Upload to YouTube</button>
+
+      <!-- Progress -->
+      <div class="progress-wrap" id="progressWrap" style="display:none;">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="progress-msg" id="progressMsg"></div>
+      </div>
+
+      <!-- Done -->
+      <div class="done-card" id="doneCard" style="display:none;">
+        <h3>✅ Upload complete!</h3>
+        <div style="font-size:0.85rem; color:var(--muted2);">Your video is now on YouTube.</div>
+        <div class="done-links" id="doneLinks"></div>
+      </div>
+
+      <div class="status" id="uploadStatus"></div>
     </div>
   </div>
 
 </div>
 
 <script>
-// ── State ──────────────────────────────────────────────────────────────────────
 let rawTags = [];
 
-// ── Init ───────────────────────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  // Handle URL params from OAuth redirect
   const params = new URLSearchParams(window.location.search);
-  if (params.get('auth') === 'success' || params.get('auth_error')) {
-    window.history.replaceState({}, '', '/');
-  }
-
+  if (params.has('auth') || params.has('auth_error')) window.history.replaceState({}, '', '/');
   await checkAuth();
+  setupDragDrop('videoDrop', 'videoFile', onVideoFile);
+  setupDragDrop('thumbDrop', 'thumbFile', onThumbFile);
 });
 
 async function checkAuth() {
@@ -464,181 +358,255 @@ async function checkAuth() {
     const res = await fetch('/auth/status');
     const data = await res.json();
     setAuthState(data.authenticated);
-  } catch {
-    setAuthState(false);
-  }
+  } catch { setAuthState(false); }
 }
 
-function setAuthState(authenticated) {
+function setAuthState(ok) {
   const banner = document.getElementById('authBanner');
   const dot = document.getElementById('authDot');
-  const title = document.getElementById('authTitle');
-  const sub = document.getElementById('authSub');
-  const actions = document.getElementById('authActions');
-  const step1 = document.getElementById('step1');
-
-  if (authenticated) {
-    banner.className = 'logged-in';
-    dot.className = 'auth-dot on';
-    title.textContent = 'Connected to YouTube';
-    sub.textContent = 'Using YouTube Data API v3 — your searches are authenticated';
-    actions.innerHTML = '<a href="/auth/logout" class="btn btn-ghost btn-sm">Sign out</a>';
-    step1.classList.remove('locked');
-  } else {
-    banner.className = 'logged-out';
-    dot.className = 'auth-dot off';
-    title.textContent = 'Not connected';
-    sub.textContent = 'Sign in with Google to use the YouTube Data API';
-    actions.innerHTML = '<a href="/auth/login" class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.93 12.19c0-.47-.04-.82-.11-1.18H12v2.14h3.33c-.14.77-.57 1.94-1.64 2.72l2.56 1.98c1.49-1.38 2.35-3.41 2.35-5.66H17.93z"/></svg>Sign in with Google</a>';
-    step1.classList.add('locked');
-  }
+  banner.className = ok ? 'logged-in' : 'logged-out';
+  dot.className = 'auth-dot ' + (ok ? 'on' : 'off');
+  document.getElementById('authTitle').textContent = ok ? 'Connected to YouTube' : 'Not connected';
+  document.getElementById('authSub').textContent = ok
+    ? 'YouTube Data API v3 — authenticated'
+    : 'Sign in with Google to use the YouTube Data API';
+  document.getElementById('authActions').innerHTML = ok
+    ? '<a href="/auth/logout" class="btn btn-ghost btn-sm">Sign out</a>'
+    : '<a href="/auth/login" class="btn btn-primary">Sign in with Google</a>';
+  if (ok) document.getElementById('step1').classList.remove('locked');
+  else document.getElementById('step1').classList.add('locked');
 }
 
-// ── Search ─────────────────────────────────────────────────────────────────────
+// ── Search ────────────────────────────────────────────────────
 async function searchYouTube() {
   const idea = document.getElementById('ideaInput').value.trim();
   const status = document.getElementById('searchStatus');
   const results = document.getElementById('searchResults');
-
   if (!idea) { setStatus(status, 'Enter a topic first.', 'error'); return; }
-
-  setStatus(status, 'Searching...', 'loading', true);
+  setStatus(status, 'Searching…', 'loading', true);
   results.innerHTML = '';
-
   try {
     const res = await fetch('/api/search?q=' + encodeURIComponent(idea));
-    if (res.status === 401) { setStatus(status, 'Session expired — please sign in again.', 'error'); return; }
+    if (res.status === 401) { setStatus(status, 'Session expired — sign in again.', 'error'); return; }
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-
-    setStatus(status, `Found ${data.videos.length} videos. Pick the top result to use as reference.`, 'success');
-    results.innerHTML = '';
-    data.videos.forEach((v, i) => {
+    setStatus(status, `Found ${data.videos.length} videos. Pick one to use as reference.`, 'success');
+    data.videos.forEach(v => {
       const card = document.createElement('div');
       card.className = 'video-card';
       card.innerHTML = `
-        <img src="${v.thumbnail || ''}" alt="" loading="lazy">
+        <img src="${v.thumbnail||''}" alt="" loading="lazy">
         <div class="video-info">
-          <div class="video-title">${escHtml(v.title)}</div>
-          <div class="video-meta">${escHtml(v.channelTitle)} · ${new Date(v.publishedAt).getFullYear()}</div>
+          <div class="video-title">${esc(v.title)}</div>
+          <div class="video-meta">${esc(v.channelTitle)} · ${new Date(v.publishedAt).getFullYear()}</div>
         </div>
-        <button class="video-select-btn" onclick="selectVideo('${v.videoId}', this)">Use this</button>
-      `;
+        <button class="use-btn" onclick="selectVideo('${v.videoId}', this)">Use this</button>`;
       results.appendChild(card);
     });
-  } catch (err) {
-    setStatus(status, 'Error: ' + err.message, 'error');
-  }
+  } catch (err) { setStatus(status, 'Error: ' + err.message, 'error'); }
 }
 
-// ── Fetch Metadata ─────────────────────────────────────────────────────────────
+// ── Fetch metadata ────────────────────────────────────────────
 async function selectVideo(videoId, btn) {
-  // Visual feedback
   document.querySelectorAll('.video-card').forEach(c => c.classList.remove('selected'));
   btn.closest('.video-card').classList.add('selected');
-  btn.textContent = 'Loading...';
-
+  btn.textContent = 'Loading…';
   const status = document.getElementById('metaStatus');
-  const content = document.getElementById('metaContent');
-  const step2 = document.getElementById('step2');
-  const step2Num = document.getElementById('step2Num');
-
-  step2.classList.remove('locked');
-  content.style.display = 'none';
-  setStatus(status, 'Fetching metadata via YouTube Data API...', 'loading', true);
-
+  document.getElementById('step2').classList.remove('locked');
+  document.getElementById('metaContent').style.display = 'none';
+  setStatus(status, 'Fetching via YouTube Data API…', 'loading', true);
   try {
     const res = await fetch('/api/video/' + videoId);
-    if (res.status === 401) { setStatus(status, 'Session expired — please sign in again.', 'error'); return; }
+    if (res.status === 401) { setStatus(status, 'Session expired — sign in again.', 'error'); return; }
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    // Populate source view
     document.getElementById('srcTitle').textContent = data.title;
     document.getElementById('srcDesc').textContent = data.description || '(no description)';
-
     rawTags = data.tags || [];
-    const tagsWrap = document.getElementById('srcTags');
     document.getElementById('tagCount').textContent = rawTags.length ? `(${rawTags.length})` : '';
-    tagsWrap.innerHTML = rawTags.length
-      ? rawTags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')
-      : '<span style="color:var(--muted2); font-size:0.82rem;">No tags on this video</span>';
+    const tw = document.getElementById('srcTags');
+    tw.innerHTML = rawTags.length
+      ? rawTags.map(t => `<span class="tag">${esc(t)}</span>`).join('')
+      : '<span style="color:var(--muted2);font-size:0.82rem;">No tags on this video</span>';
 
-    // Stats
-    const statsRow = document.getElementById('statsRow');
-    const stats = data.statistics || {};
-    statsRow.innerHTML = [
-      stats.viewCount && `<div class="stat-chip"><strong>${fmtNum(stats.viewCount)}</strong> views</div>`,
-      stats.likeCount && `<div class="stat-chip"><strong>${fmtNum(stats.likeCount)}</strong> likes</div>`,
-      stats.commentCount && `<div class="stat-chip"><strong>${fmtNum(stats.commentCount)}</strong> comments</div>`,
+    const s = data.statistics || {};
+    document.getElementById('statsRow').innerHTML = [
+      s.viewCount && `<div class="stat-chip"><strong>${fmt(s.viewCount)}</strong> views</div>`,
+      s.likeCount && `<div class="stat-chip"><strong>${fmt(s.likeCount)}</strong> likes</div>`,
+      s.commentCount && `<div class="stat-chip"><strong>${fmt(s.commentCount)}</strong> comments</div>`,
     ].filter(Boolean).join('');
 
-    content.style.display = 'block';
+    document.getElementById('metaContent').style.display = 'block';
     setStatus(status, '', '');
-    step2Num.className = 'step-num done';
-    step2Num.textContent = '✓';
+    done('sn2');
 
-    // Pre-fill step 3
     document.getElementById('yourTitle').value = data.title;
     document.getElementById('yourDesc').value = data.description || '';
     document.getElementById('yourTags').value = rawTags.join(', ');
-
     document.getElementById('step3').classList.remove('locked');
     btn.textContent = 'Selected ✓';
-
   } catch (err) {
     setStatus(status, 'Error: ' + err.message, 'error');
     btn.textContent = 'Use this';
   }
 }
 
-// ── Finalize ───────────────────────────────────────────────────────────────────
-function finalize() {
-  const title = document.getElementById('yourTitle').value;
-  const desc = document.getElementById('yourDesc').value;
+// ── Step 3 → Step 4 ───────────────────────────────────────────
+function goToUpload() {
+  const title = document.getElementById('yourTitle').value.trim();
+  if (!title) { alert('Please add a title.'); return; }
+  done('sn3');
+  document.getElementById('step4').classList.remove('locked');
+  document.getElementById('sumTitle').textContent = title;
+  const tagsArr = document.getElementById('yourTags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  document.getElementById('sumTags').textContent = tagsArr.length
+    ? tagsArr.slice(0,5).join(', ') + (tagsArr.length > 5 ? ` +${tagsArr.length-5} more` : '')
+    : 'none';
+  document.getElementById('step4').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── File inputs ───────────────────────────────────────────────
+function onVideoFile(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  document.getElementById('videoName').textContent = file.name;
+  document.getElementById('videoDrop').classList.add('has-file');
+}
+function onThumbFile(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  document.getElementById('thumbName').textContent = file.name;
+  document.getElementById('thumbDrop').classList.add('has-file');
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('thumbPreview').src = e.target.result;
+    document.getElementById('thumbPreviewWrap').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function setupDragDrop(zoneId, inputId, handler) {
+  const zone = document.getElementById(zoneId);
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    const input = document.getElementById(inputId);
+    if (e.dataTransfer.files.length) {
+      // Manually set files on input and trigger handler
+      const dt = new DataTransfer();
+      dt.items.add(e.dataTransfer.files[0]);
+      input.files = dt.files;
+      handler(input);
+    }
+  });
+}
+
+// ── Upload ────────────────────────────────────────────────────
+async function startUpload() {
+  const videoInput = document.getElementById('videoFile');
+  const thumbInput = document.getElementById('thumbFile');
+  const status = document.getElementById('uploadStatus');
+  const btn = document.getElementById('uploadBtn');
+
+  if (!videoInput.files?.[0]) { setStatus(status, 'Please select an MP4 file.', 'error'); return; }
+
+  const title = document.getElementById('yourTitle').value.trim();
+  const description = document.getElementById('yourDesc').value;
   const tags = document.getElementById('yourTags').value;
+  const categoryId = document.getElementById('categoryId').value;
+  const privacyStatus = document.querySelector('input[name="privacy"]:checked')?.value || 'private';
 
-  document.getElementById('finalTitle').value = title;
-  document.getElementById('finalDesc').value = desc;
-  document.getElementById('finalTags').value = tags;
+  btn.disabled = true;
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('doneCard').style.display = 'none';
+  setStatus(status, '', '');
 
-  const step4 = document.getElementById('step4');
-  const step3Num = document.getElementById('step3Num');
-  step3Num.className = 'step-num done';
-  step3Num.textContent = '✓';
-  step4.classList.remove('locked');
-  step4.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const formData = new FormData();
+  formData.append('video', videoInput.files[0]);
+  if (thumbInput.files?.[0]) formData.append('thumbnail', thumbInput.files[0]);
+  formData.append('title', title);
+  formData.append('description', description);
+  formData.append('tags', tags);
+  formData.append('categoryId', categoryId);
+  formData.append('privacyStatus', privacyStatus);
+
+  try {
+    const response = await fetch('/api/upload', { method: 'POST', body: formData });
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const evt = JSON.parse(line.slice(6));
+            handleUploadEvent(evt);
+          } catch {}
+        }
+      }
+    }
+  } catch (err) {
+    setStatus(status, 'Upload failed: ' + err.message, 'error');
+    btn.disabled = false;
+  }
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-function startOver() {
-  window.location.reload();
+function handleUploadEvent(evt) {
+  const bar = document.getElementById('progressBar');
+  const msg = document.getElementById('progressMsg');
+
+  if (evt.stage === 'uploading') {
+    bar.style.width = (evt.progress || 0) + '%';
+    msg.textContent = evt.message;
+  } else if (evt.stage === 'uploaded' || evt.stage === 'thumbnail') {
+    bar.style.width = '100%';
+    msg.textContent = evt.message;
+  } else if (evt.stage === 'thumbnail_warn') {
+    msg.textContent = evt.message;
+  } else if (evt.stage === 'done') {
+    bar.style.width = '100%';
+    msg.textContent = '';
+    document.getElementById('progressWrap').style.display = 'none';
+    const doneCard = document.getElementById('doneCard');
+    doneCard.style.display = 'block';
+    document.getElementById('doneLinks').innerHTML = `
+      <a href="${evt.url}" target="_blank" class="btn btn-secondary btn-sm">▶ Watch on YouTube</a>
+      <a href="${evt.studioUrl}" target="_blank" class="btn btn-ghost btn-sm">✏️ Edit in Studio</a>
+    `;
+    done('sn4');
+  } else if (evt.stage === 'error') {
+    document.getElementById('progressWrap').style.display = 'none';
+    setStatus(document.getElementById('uploadStatus'), 'Error: ' + evt.message, 'error');
+    document.getElementById('uploadBtn').disabled = false;
+  }
 }
 
+// ── Helpers ───────────────────────────────────────────────────
+function done(id) {
+  const el = document.getElementById(id);
+  el.className = 'step-num done';
+  el.textContent = '✓';
+}
 function setStatus(el, msg, type, spinner = false) {
   el.className = 'status ' + type;
-  el.innerHTML = (spinner ? '<div class="spinner"></div>' : '') + (msg ? escHtml(msg) : '');
+  el.innerHTML = (spinner ? '<div class="spinner"></div>' : '') + esc(msg);
 }
-
-function escHtml(str) {
-  const d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
-}
-
-function fmtNum(n) {
-  return Number(n).toLocaleString();
-}
-
+function esc(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+function fmt(n) { return Number(n).toLocaleString(); }
 function copyField(id) {
   const el = document.getElementById(id);
-  const text = el.value !== undefined ? el.value : el.textContent;
-  navigator.clipboard.writeText(text).catch(() => {});
+  navigator.clipboard.writeText(el.value !== undefined ? el.value : el.textContent).catch(()=>{});
 }
-
-function copyTags() {
-  navigator.clipboard.writeText(rawTags.join(', ')).catch(() => {});
-}
+function copyTags() { navigator.clipboard.writeText(rawTags.join(', ')).catch(()=>{}); }
 </script>
 </body>
 </html>
