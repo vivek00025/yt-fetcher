@@ -72,7 +72,6 @@
   .field { margin-bottom: 14px; }
   .field:last-child { margin-bottom: 0; }
 
-  /* search results */
   .search-results { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
   .video-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
   .video-card:hover { border-color: var(--accent); background: #1a1212; }
@@ -84,7 +83,6 @@
   .use-btn { font-size: 0.75rem; padding: 5px 10px; border-radius: 6px; background: var(--accent-dim); border: 1px solid rgba(255,60,60,0.3); color: var(--accent); cursor: pointer; white-space: nowrap; font-weight: 600; font-family: inherit; transition: background 0.15s; flex-shrink: 0; }
   .use-btn:hover { background: rgba(255,60,60,0.22); }
 
-  /* meta display */
   .meta-block { background: #0f0f0f; border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 0.875rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; color: var(--muted2); margin-top: 6px; }
   .meta-row { margin-bottom: 14px; }
   .meta-row:last-child { margin-bottom: 0; }
@@ -96,7 +94,9 @@
   .stat-chip { font-size: 0.78rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; color: var(--muted2); }
   .stat-chip strong { color: var(--text); }
 
-  /* file drop zones */
+  /* category badge shown in step 2 */
+  .category-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,60,60,0.1); border: 1px solid rgba(255,60,60,0.25); border-radius: 6px; padding: 4px 10px; font-size: 0.78rem; color: var(--accent); font-weight: 500; margin-top: 10px; }
+
   .drop-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 24px; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; position: relative; }
   .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: var(--accent-dim); }
   .drop-zone.has-file { border-color: rgba(74,222,128,0.4); background: rgba(74,222,128,0.05); }
@@ -106,11 +106,9 @@
   .drop-sub { font-size: 0.78rem; color: var(--muted2); margin-top: 4px; }
   .drop-filename { font-size: 0.82rem; color: var(--success); margin-top: 6px; font-weight: 500; }
 
-  /* upload form two-col */
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 540px) { .two-col { grid-template-columns: 1fr; } }
 
-  /* privacy select */
   .privacy-row { display: flex; gap: 8px; }
   .privacy-opt { flex: 1; }
   .privacy-opt input[type="radio"] { display: none; }
@@ -119,13 +117,23 @@
   .privacy-opt label .psub { font-size: 0.72rem; color: var(--muted2); font-weight: 400; }
   .privacy-opt input:checked + label { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
 
-  /* progress */
-  .progress-wrap { margin-top: 14px; }
-  .progress-bar-bg { background: var(--surface2); border-radius: 999px; height: 6px; overflow: hidden; margin-bottom: 8px; }
-  .progress-bar { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s ease; width: 0%; }
-  .progress-msg { font-size: 0.82rem; color: var(--muted2); }
+  /* ── Upload progress ── */
+  .progress-wrap { margin-top: 16px; }
+  .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .progress-label { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+  .progress-pct { font-size: 0.92rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; min-width: 3.5ch; text-align: right; }
+  .progress-bar-bg { background: var(--surface2); border-radius: 999px; height: 8px; overflow: hidden; margin-bottom: 8px; border: 1px solid var(--border); }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), #ff7043); border-radius: 999px; transition: width 0.4s cubic-bezier(.4,0,.2,1); width: 0%; position: relative; }
+  .progress-bar::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 20px; background: rgba(255,255,255,0.25); border-radius: 999px; animation: shimmer 1.2s ease-in-out infinite; }
+  @keyframes shimmer { 0%,100% { opacity: 0; } 50% { opacity: 1; } }
+  .progress-bar.done { background: var(--success); }
+  .progress-bar.done::after { display: none; }
+  .progress-stages { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .stage-pill { font-size: 0.72rem; padding: 3px 8px; border-radius: 20px; border: 1px solid var(--border); color: var(--muted2); background: var(--surface2); transition: all 0.2s; }
+  .stage-pill.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .stage-pill.complete { border-color: rgba(74,222,128,0.3); color: var(--success); background: rgba(74,222,128,0.08); }
+  .progress-msg { font-size: 0.8rem; color: var(--muted2); margin-top: 6px; min-height: 1.2em; }
 
-  /* done card */
   .done-card { background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.25); border-radius: 10px; padding: 18px; margin-top: 14px; }
   .done-card h3 { font-size: 1rem; font-weight: 600; color: var(--success); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
   .done-links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
@@ -198,6 +206,10 @@
           <div class="meta-row-header"><span class="meta-label">Title</span><button class="btn btn-ghost btn-sm" onclick="copyField('srcTitle')">Copy</button></div>
           <div class="meta-block" id="srcTitle"></div>
         </div>
+        <!-- Category badge from source video -->
+        <div id="srcCategoryWrap" style="display:none;">
+          <div class="category-badge" id="srcCategoryBadge">📂 <span id="srcCategoryName"></span></div>
+        </div>
         <div id="statsRow" class="stats-row"></div>
         <div class="meta-row mt14">
           <div class="meta-row-header"><span class="meta-label">Description</span><button class="btn btn-ghost btn-sm" onclick="copyField('srcDesc')">Copy</button></div>
@@ -245,7 +257,6 @@
       <p class="tip">Add your MP4 and (optionally) a thumbnail. The title, description, and tags from Step 3 will be used automatically.</p>
 
       <div class="two-col" style="margin-bottom:14px;">
-        <!-- Video file -->
         <div>
           <label class="fl">Video File (MP4)</label>
           <div class="drop-zone" id="videoDrop">
@@ -256,8 +267,6 @@
             <div class="drop-filename" id="videoName"></div>
           </div>
         </div>
-
-        <!-- Thumbnail -->
         <div>
           <label class="fl">Thumbnail (optional)</label>
           <div class="drop-zone" id="thumbDrop">
@@ -276,22 +285,22 @@
       <!-- Category & Privacy -->
       <div class="two-col" style="margin-bottom:14px;">
         <div class="field" style="margin-bottom:0;">
-          <label class="fl">Category</label>
+          <label class="fl">Category <span id="categoryAutoLabel" style="color:var(--accent);font-size:0.72rem;display:none;">· auto-set from source</span></label>
           <select id="categoryId">
-            <option value="1">Film & Animation</option>
-            <option value="2">Autos & Vehicles</option>
+            <option value="1">Film &amp; Animation</option>
+            <option value="2">Autos &amp; Vehicles</option>
             <option value="10">Music</option>
-            <option value="15">Pets & Animals</option>
+            <option value="15">Pets &amp; Animals</option>
             <option value="17">Sports</option>
             <option value="20">Gaming</option>
-            <option value="22" selected>People & Blogs</option>
+            <option value="22" selected>People &amp; Blogs</option>
             <option value="23">Comedy</option>
             <option value="24">Entertainment</option>
-            <option value="25">News & Politics</option>
-            <option value="26">Howto & Style</option>
+            <option value="25">News &amp; Politics</option>
+            <option value="26">Howto &amp; Style</option>
             <option value="27">Education</option>
-            <option value="28">Science & Technology</option>
-            <option value="29">Nonprofits & Activism</option>
+            <option value="28">Science &amp; Technology</option>
+            <option value="29">Nonprofits &amp; Activism</option>
           </select>
         </div>
         <div class="field" style="margin-bottom:0;">
@@ -313,7 +322,7 @@
         </div>
       </div>
 
-      <!-- Summary of what will be used -->
+      <!-- Metadata summary -->
       <div id="metaSummary" style="background:#0f0f0f; border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:14px; font-size:0.82rem; line-height:1.6;">
         <div style="color:var(--muted2); margin-bottom:4px; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">Metadata that will be applied</div>
         <div><span style="color:var(--muted2);">Title:</span> <span id="sumTitle" style="color:var(--text);"></span></div>
@@ -322,9 +331,21 @@
 
       <button class="btn btn-primary" id="uploadBtn" onclick="startUpload()">🚀 Upload to YouTube</button>
 
-      <!-- Progress -->
+      <!-- Progress UI -->
       <div class="progress-wrap" id="progressWrap" style="display:none;">
-        <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="progress-header">
+          <span class="progress-label" id="progressLabel">Uploading…</span>
+          <span class="progress-pct" id="progressPct">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="progress-stages">
+          <span class="stage-pill" id="stage-init">Init</span>
+          <span class="stage-pill" id="stage-upload">Upload</span>
+          <span class="stage-pill" id="stage-thumb">Thumbnail</span>
+          <span class="stage-pill" id="stage-done">Done</span>
+        </div>
         <div class="progress-msg" id="progressMsg"></div>
       </div>
 
@@ -343,6 +364,15 @@
 
 <script>
 let rawTags = [];
+let sourceCategoryId = null;
+
+// ── Category map ──────────────────────────────────────────────
+const CATEGORY_NAMES = {
+  '1':'Film & Animation','2':'Autos & Vehicles','10':'Music','15':'Pets & Animals',
+  '17':'Sports','20':'Gaming','22':'People & Blogs','23':'Comedy','24':'Entertainment',
+  '25':'News & Politics','26':'Howto & Style','27':'Education','28':'Science & Technology',
+  '29':'Nonprofits & Activism',
+};
 
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -430,6 +460,16 @@ async function selectVideo(videoId, btn) {
       ? rawTags.map(t => `<span class="tag">${esc(t)}</span>`).join('')
       : '<span style="color:var(--muted2);font-size:0.82rem;">No tags on this video</span>';
 
+    // ── Show source category ──
+    sourceCategoryId = data.categoryId || null;
+    const catWrap = document.getElementById('srcCategoryWrap');
+    if (sourceCategoryId && CATEGORY_NAMES[sourceCategoryId]) {
+      document.getElementById('srcCategoryName').textContent = CATEGORY_NAMES[sourceCategoryId];
+      catWrap.style.display = 'block';
+    } else {
+      catWrap.style.display = 'none';
+    }
+
     const s = data.statistics || {};
     document.getElementById('statsRow').innerHTML = [
       s.viewCount && `<div class="stat-chip"><strong>${fmt(s.viewCount)}</strong> views</div>`,
@@ -446,6 +486,17 @@ async function selectVideo(videoId, btn) {
     document.getElementById('yourTags').value = rawTags.join(', ');
     document.getElementById('step3').classList.remove('locked');
     btn.textContent = 'Selected ✓';
+
+    // ── Auto-select category in Step 4 dropdown ──
+    if (sourceCategoryId) {
+      const sel = document.getElementById('categoryId');
+      const opt = sel.querySelector(`option[value="${sourceCategoryId}"]`);
+      if (opt) {
+        sel.value = sourceCategoryId;
+        document.getElementById('categoryAutoLabel').style.display = 'inline';
+      }
+    }
+
   } catch (err) {
     setStatus(status, 'Error: ' + err.message, 'error');
     btn.textContent = 'Use this';
@@ -495,13 +546,23 @@ function setupDragDrop(zoneId, inputId, handler) {
     zone.classList.remove('dragover');
     const input = document.getElementById(inputId);
     if (e.dataTransfer.files.length) {
-      // Manually set files on input and trigger handler
       const dt = new DataTransfer();
       dt.items.add(e.dataTransfer.files[0]);
       input.files = dt.files;
       handler(input);
     }
   });
+}
+
+// ── Progress helpers ──────────────────────────────────────────
+function setStage(id, state) { // state: 'active' | 'complete' | ''
+  const el = document.getElementById('stage-' + id);
+  if (!el) return;
+  el.className = 'stage-pill' + (state ? ' ' + state : '');
+}
+function setProgressPct(pct) {
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
 }
 
 // ── Upload ────────────────────────────────────────────────────
@@ -520,9 +581,16 @@ async function startUpload() {
   const privacyStatus = document.querySelector('input[name="privacy"]:checked')?.value || 'private';
 
   btn.disabled = true;
+  setStatus(status, '', '');
   document.getElementById('progressWrap').style.display = 'block';
   document.getElementById('doneCard').style.display = 'none';
-  setStatus(status, '', '');
+  document.getElementById('progressLabel').textContent = 'Starting upload…';
+  setProgressPct(0);
+  document.getElementById('progressMsg').textContent = '';
+  document.getElementById('progressBar').classList.remove('done');
+  // reset stages
+  ['init','upload','thumb','done'].forEach(s => setStage(s, ''));
+  setStage('init', 'active');
 
   const formData = new FormData();
   formData.append('video', videoInput.files[0]);
@@ -535,6 +603,11 @@ async function startUpload() {
 
   try {
     const response = await fetch('/api/upload', { method: 'POST', body: formData });
+    if (!response.ok && !response.body) {
+      const err = await response.json().catch(() => ({ error: 'Upload failed' }));
+      throw new Error(err.error || 'Upload failed');
+    }
+
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -547,42 +620,65 @@ async function startUpload() {
       buffer = lines.pop();
       for (const line of lines) {
         if (line.startsWith('data: ')) {
-          try {
-            const evt = JSON.parse(line.slice(6));
-            handleUploadEvent(evt);
-          } catch {}
+          try { handleUploadEvent(JSON.parse(line.slice(6))); } catch {}
         }
       }
     }
   } catch (err) {
     setStatus(status, 'Upload failed: ' + err.message, 'error');
     btn.disabled = false;
+    document.getElementById('progressWrap').style.display = 'none';
   }
 }
 
 function handleUploadEvent(evt) {
-  const bar = document.getElementById('progressBar');
+  const label = document.getElementById('progressLabel');
   const msg = document.getElementById('progressMsg');
+  const bar = document.getElementById('progressBar');
 
   if (evt.stage === 'uploading') {
-    bar.style.width = (evt.progress || 0) + '%';
-    msg.textContent = evt.message;
-  } else if (evt.stage === 'uploaded' || evt.stage === 'thumbnail') {
-    bar.style.width = '100%';
-    msg.textContent = evt.message;
+    const pct = evt.progress || 0;
+    if (pct <= 2) {
+      setStage('init', 'complete');
+      setStage('upload', 'active');
+    }
+    setProgressPct(pct);
+    label.textContent = `Uploading… ${pct}%`;
+    msg.textContent = evt.message || '';
+
+  } else if (evt.stage === 'uploaded') {
+    setProgressPct(100);
+    setStage('upload', 'complete');
+    label.textContent = 'Upload complete!';
+    msg.textContent = evt.message || '';
+
+  } else if (evt.stage === 'thumbnail') {
+    setStage('thumb', 'active');
+    label.textContent = 'Setting thumbnail…';
+    msg.textContent = evt.message || '';
+
   } else if (evt.stage === 'thumbnail_warn') {
-    msg.textContent = evt.message;
+    setStage('thumb', '');
+    msg.textContent = evt.message || '';
+
   } else if (evt.stage === 'done') {
-    bar.style.width = '100%';
+    setProgressPct(100);
+    bar.classList.add('done');
+    setStage('thumb', 'complete');
+    setStage('done', 'complete');
+    label.textContent = '✅ Done!';
     msg.textContent = '';
-    document.getElementById('progressWrap').style.display = 'none';
-    const doneCard = document.getElementById('doneCard');
-    doneCard.style.display = 'block';
-    document.getElementById('doneLinks').innerHTML = `
-      <a href="${evt.url}" target="_blank" class="btn btn-secondary btn-sm">▶ Watch on YouTube</a>
-      <a href="${evt.studioUrl}" target="_blank" class="btn btn-ghost btn-sm">✏️ Edit in Studio</a>
-    `;
-    done('sn4');
+    setTimeout(() => {
+      document.getElementById('progressWrap').style.display = 'none';
+      const doneCard = document.getElementById('doneCard');
+      doneCard.style.display = 'block';
+      document.getElementById('doneLinks').innerHTML = `
+        <a href="${evt.url}" target="_blank" class="btn btn-secondary btn-sm">▶ Watch on YouTube</a>
+        <a href="${evt.studioUrl}" target="_blank" class="btn btn-ghost btn-sm">✏️ Edit in Studio</a>
+      `;
+      done('sn4');
+    }, 600);
+
   } else if (evt.stage === 'error') {
     document.getElementById('progressWrap').style.display = 'none';
     setStatus(document.getElementById('uploadStatus'), 'Error: ' + evt.message, 'error');

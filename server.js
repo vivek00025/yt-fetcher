@@ -6,12 +6,16 @@ const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const { createClient } = require('@supabase/supabase-js');
+const multer = require('multer');
 
 const app = express();
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// multer: store uploads in memory (for Vercel) or disk for large files
+const upload = multer({ storage: multer.memoryStorage() });
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-production';
 const COOKIE_NAME = 'yt_session';
@@ -89,12 +93,10 @@ app.get('/auth/callback', async (req, res) => {
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
 
-    // Get user email
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
     const userInfo = await oauth2.userinfo.get();
     const email = userInfo.data.email;
 
-    // Get YouTube channel info
     let channelId = null, channelTitle = null;
     try {
       const yt = google.youtube({ version: 'v3', auth: oauth2Client });
@@ -105,7 +107,6 @@ app.get('/auth/callback', async (req, res) => {
       }
     } catch (_) {}
 
-    // Upsert user in Supabase
     const { data: user, error: dbErr } = await supabase
       .from('users')
       .upsert({
@@ -124,13 +125,7 @@ app.get('/auth/callback', async (req, res) => {
       return res.redirect('/?auth_error=db_error');
     }
 
-    // Store everything in JWT cookie (stateless)
-    setSession(res, {
-      userId: user.id,
-      email,
-      tokens,
-    });
-
+    setSession(res, { userId: user.id, email, tokens });
     res.redirect('/?auth=success');
   } catch (err) {
     console.error('Token exchange error:', err.message);
@@ -209,7 +204,7 @@ app.get('/api/video/:videoId', async (req, res) => {
       publishedAt: snippet.publishedAt,
       thumbnail: snippet.thumbnails?.maxres?.url || snippet.thumbnails?.high?.url,
       statistics: stats,
-      categoryId: snippet.categoryId,
+      categoryId: snippet.categoryId,   // ← included for frontend auto-select
     };
 
     if (session.userId) {
@@ -236,7 +231,166 @@ app.get('/api/video/:videoId', async (req, res) => {
   }
 });
 
-// ─── API: Init Resumable Upload ────────────────────────────────────────────
+// ─── API: Upload (SSE with real progress) ─────────────────────────────────
+// Accepts multipart/form-data: video (file), thumbnail (file, optional),
+// title, description, tags, categoryId, privacyStatus
+// Streams SSE events: uploading (progress %), uploaded, thumbnail, done, error
+app.post('/api/upload', upload.fields([
+  { name: 'video', maxCount: 1 },
+  { name: 'thumbnail', maxCount: 1 },
+]), async (req, res) => {
+  const session = getSession(req);
+  if (!session) return res.status(401).json({ error: 'Not authenticated' });
+
+  const videoFile = req.files?.video?.[0];
+  if (!videoFile) return res.status(400).json({ error: 'No video file provided' });
+
+  const { title, description, tags, categoryId, privacyStatus } = req.body;
+
+  // ── SSE setup ──
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+
+  const sendProgress = (() => {
+    let lastPct = -1;
+    return (uploaded, total) => {
+      const pct = Math.min(99, Math.round((uploaded / total) * 100));
+      if (pct !== lastPct) {
+        lastPct = pct;
+        send({ stage: 'uploading', progress: pct, message: `Uploading… ${pct}%` });
+      }
+    };
+  })();
+
+  try {
+    const accessToken = session.tokens.access_token;
+    const fileSize = videoFile.size;
+    const mimeType = videoFile.mimetype || 'video/mp4';
+    const tagsArr = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+    // ── Step 1: init resumable upload ──
+    send({ stage: 'uploading', progress: 0, message: 'Initialising upload…' });
+
+    const initResp = await axios.post(
+      'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
+      {
+        snippet: {
+          title: title || 'My Video',
+          description: description || '',
+          tags: tagsArr,
+          categoryId: categoryId || '22',
+        },
+        status: { privacyStatus: privacyStatus || 'private' },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Upload-Content-Type': mimeType,
+          'X-Upload-Content-Length': fileSize,
+        },
+      }
+    );
+
+    const uploadUri = initResp.headers.location;
+    if (!uploadUri) throw new Error('YouTube did not return an upload URI');
+
+    // ── Step 2: chunked PUT with progress ──
+    const CHUNK = 8 * 1024 * 1024; // 8 MB chunks
+    const buffer = videoFile.buffer;
+    let offset = 0;
+    let youtubeVideoId = null;
+
+    while (offset < fileSize) {
+      const end = Math.min(offset + CHUNK, fileSize);
+      const chunk = buffer.slice(offset, end);
+
+      const chunkResp = await axios.put(uploadUri, chunk, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': mimeType,
+          'Content-Range': `bytes ${offset}-${end - 1}/${fileSize}`,
+          'Content-Length': chunk.length,
+        },
+        validateStatus: s => s === 200 || s === 201 || s === 308,
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+      });
+
+      offset = end;
+      sendProgress(offset, fileSize);
+
+      if (chunkResp.status === 200 || chunkResp.status === 201) {
+        youtubeVideoId = chunkResp.data?.id;
+        break;
+      }
+      // 308 Resume Incomplete — continue loop
+    }
+
+    if (!youtubeVideoId) throw new Error('Upload completed but no video ID returned');
+
+    send({ stage: 'uploaded', progress: 100, message: 'Video uploaded! Processing metadata…' });
+
+    // ── Step 3: thumbnail (optional) ──
+    const thumbFile = req.files?.thumbnail?.[0];
+    if (thumbFile) {
+      try {
+        send({ stage: 'thumbnail', message: 'Setting thumbnail…' });
+        await axios.post(
+          `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${encodeURIComponent(youtubeVideoId)}&uploadType=media`,
+          thumbFile.buffer,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': thumbFile.mimetype || 'image/jpeg',
+              'Content-Length': thumbFile.size,
+            },
+            maxBodyLength: Infinity,
+          }
+        );
+      } catch (thumbErr) {
+        send({ stage: 'thumbnail_warn', message: 'Thumbnail upload failed (video still uploaded).' });
+        console.warn('Thumbnail error:', thumbErr.response?.data || thumbErr.message);
+      }
+    }
+
+    // ── Step 4: log to Supabase ──
+    if (session.userId) {
+      await supabase.from('upload_history').insert({
+        user_id: session.userId,
+        title,
+        description,
+        tags: tagsArr,
+        category_id: categoryId,
+        privacy_status: privacyStatus || 'private',
+        youtube_video_id: youtubeVideoId,
+        upload_status: 'success',
+        youtube_url: `https://www.youtube.com/watch?v=${youtubeVideoId}`,
+      }).catch(e => console.warn('DB log error:', e.message));
+    }
+
+    // ── Done ──
+    send({
+      stage: 'done',
+      videoId: youtubeVideoId,
+      url: `https://www.youtube.com/watch?v=${youtubeVideoId}`,
+      studioUrl: `https://studio.youtube.com/video/${youtubeVideoId}/edit`,
+    });
+
+    res.end();
+  } catch (err) {
+    const msg = err.response?.data?.error?.message || err.message;
+    console.error('Upload error:', msg);
+    send({ stage: 'error', message: msg });
+    res.end();
+  }
+});
+
+// ─── API: Init Resumable Upload (kept for legacy / client-side use) ────────
 app.post('/api/upload/init', async (req, res) => {
   const session = getSession(req);
   if (!session) return res.status(401).json({ error: 'Not authenticated' });
@@ -309,7 +463,7 @@ app.post('/api/upload/confirm', async (req, res) => {
   }
 });
 
-// ─── API: Thumbnail ────────────────────────────────────────────────────────
+// ─── API: Thumbnail (standalone) ──────────────────────────────────────────
 app.post('/api/upload/thumbnail', async (req, res) => {
   const session = getSession(req);
   if (!session) return res.status(401).json({ error: 'Not authenticated' });
