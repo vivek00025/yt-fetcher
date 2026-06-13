@@ -66,6 +66,68 @@ function getAuthedClient(tokens) {
   return oauth2Client;
 }
 
+// ─── Token Refresh Helper ──────────────────────────────────────────────────
+// Ensures the access token in `session.tokens` is valid. If expired (or
+// close to expiry), refreshes it using the stored refresh_token, persists
+// the new tokens to Supabase, and returns the refreshed token set so the
+// caller can re-issue the session cookie.
+async function getValidTokens(session) {
+  const oauth2Client = getOAuth2Client();
+  oauth2Client.setCredentials(session.tokens);
+
+  const expiry = session.tokens?.expiry_date;
+  const isExpired = !expiry || expiry < Date.now() + 60 * 1000; // 1 min buffer
+
+  if (!isExpired) {
+    return { oauth2Client, tokens: session.tokens, refreshed: false };
+  }
+
+  if (!session.tokens?.refresh_token) {
+    throw new Error('Session expired and no refresh token available. Please sign in again.');
+  }
+
+  try {
+    const { credentials } = await oauth2Client.refreshAccessToken();
+
+    // Preserve refresh_token if Google doesn't return a new one
+    const newTokens = {
+      ...session.tokens,
+      ...credentials,
+      refresh_token: credentials.refresh_token || session.tokens.refresh_token,
+    };
+
+    oauth2Client.setCredentials(newTokens);
+
+    if (session.userId) {
+      const { error: dbErr } = await supabase
+        .from('users')
+        .update({
+          access_token: newTokens.access_token,
+          refresh_token: newTokens.refresh_token,
+          token_expiry: newTokens.expiry_date ? new Date(newTokens.expiry_date).toISOString() : null,
+        })
+        .eq('id', session.userId);
+
+      if (dbErr) console.warn('Token refresh DB update error:', dbErr.message);
+    }
+
+    return { oauth2Client, tokens: newTokens, refreshed: true };
+  } catch (err) {
+    throw new Error('Failed to refresh access token. Please sign in again.');
+  }
+}
+
+// Refresh session tokens for a request and re-issue the cookie if needed.
+// Returns the (possibly refreshed) tokens to use for this request.
+async function ensureFreshSession(req, res, session) {
+  const { tokens, refreshed } = await getValidTokens(session);
+  if (refreshed) {
+    setSession(res, { ...session, tokens });
+    session.tokens = tokens;
+  }
+  return tokens;
+}
+
 // ─── Auth Routes ───────────────────────────────────────────────────────────
 app.get('/auth/login', (req, res) => {
   const oauth2Client = getOAuth2Client();
@@ -151,6 +213,7 @@ app.get('/api/search', async (req, res) => {
   if (!q) return res.status(400).json({ error: 'Missing query' });
 
   try {
+    await ensureFreshSession(req, res, session);
     const youtube = google.youtube({ version: 'v3', auth: getAuthedClient(session.tokens) });
     const response = await youtube.search.list({
       part: ['snippet'], q, type: ['video'], maxResults: 5, order: 'relevance',
@@ -173,6 +236,9 @@ app.get('/api/search', async (req, res) => {
     res.json({ videos });
   } catch (err) {
     console.error('Search error:', err.message);
+    if (err.message.includes('sign in again')) {
+      return res.status(401).json({ error: err.message });
+    }
     res.status(500).json({ error: err.message });
   }
 });
@@ -184,6 +250,7 @@ app.get('/api/video/:videoId', async (req, res) => {
   const { videoId } = req.params;
 
   try {
+    await ensureFreshSession(req, res, session);
     const youtube = google.youtube({ version: 'v3', auth: getAuthedClient(session.tokens) });
     const response = await youtube.videos.list({
       part: ['snippet', 'statistics', 'contentDetails'], id: [videoId],
@@ -227,6 +294,9 @@ app.get('/api/video/:videoId', async (req, res) => {
     res.json(metadata);
   } catch (err) {
     console.error('Video fetch error:', err.message);
+    if (err.message.includes('sign in again')) {
+      return res.status(401).json({ error: err.message });
+    }
     res.status(500).json({ error: err.message });
   }
 });
@@ -243,6 +313,15 @@ app.post('/api/upload', upload.fields([
   if (!videoFile) return res.status(400).json({ error: 'No video file provided' });
 
   const { title, description, tags, categoryId, privacyStatus, madeForKids, publishAt } = req.body;
+
+  // Make sure the access token is valid BEFORE we start the (potentially
+  // long-running) upload, and re-issue the cookie if it was refreshed.
+  let accessToken;
+  try {
+    accessToken = await ensureFreshSession(req, res, session);
+  } catch (err) {
+    return res.status(401).json({ error: err.message });
+  }
 
   // SSE setup
   res.setHeader('Content-Type', 'text/event-stream');
@@ -264,12 +343,12 @@ app.post('/api/upload', upload.fields([
   })();
 
   try {
-    const accessToken = session.tokens.access_token;
+    const token = accessToken.access_token;
     const fileSize = videoFile.size;
     const mimeType = videoFile.mimetype || 'video/mp4';
     const tagsArr = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
     const isScheduled = publishAt ? true : false;
-    const pubStatus = isScheduled ? 'scheduled' : (privacyStatus || 'private');
+    const pubStatus = isScheduled ? 'private' : (privacyStatus || 'private');
 
     send({ stage: 'uploading', progress: 0, message: 'Initialising upload…' });
 
@@ -281,17 +360,18 @@ app.post('/api/upload', upload.fields([
         tags: tagsArr,
         categoryId: categoryId || '22',
       },
-      status: { privacyStatus: pubStatus },
-      processingDetails: {},
-      selfDeclaredMadeForKids: madeForKids === 'true' || madeForKids === true,
+      status: {
+        privacyStatus: pubStatus,
+        selfDeclaredMadeForKids: madeForKids === 'true' || madeForKids === true,
+      },
     };
 
     const initResp = await axios.post(
-      'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status,processingDetails',
+      'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
       uploadBody,
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
           'X-Upload-Content-Type': mimeType,
           'X-Upload-Content-Length': fileSize,
@@ -314,7 +394,7 @@ app.post('/api/upload', upload.fields([
 
       const chunkResp = await axios.put(uploadUri, chunk, {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': mimeType,
           'Content-Range': `bytes ${offset}-${end - 1}/${fileSize}`,
           'Content-Length': chunk.length,
@@ -347,7 +427,7 @@ app.post('/api/upload', upload.fields([
           thumbFile.buffer,
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
+              Authorization: `Bearer ${token}`,
               'Content-Type': thumbFile.mimetype || 'image/jpeg',
               'Content-Length': thumbFile.size,
             },
@@ -364,16 +444,16 @@ app.post('/api/upload', upload.fields([
     let scheduledTime = null;
     if (isScheduled && publishAt) {
       scheduledTime = new Date(publishAt).toISOString();
-      // Store scheduled job (set status to scheduled)
-      const youtube = google.youtube({ version: 'v3', auth: getAuthedClient(session.tokens) });
+      const youtube = google.youtube({ version: 'v3', auth: getAuthedClient(accessToken) });
       try {
         await youtube.videos.update({
           part: ['status'],
           requestBody: {
             id: youtubeVideoId,
             status: {
-              privacyStatus: privacyStatus || 'private',
+              privacyStatus: 'private',
               publishAt: scheduledTime,
+              selfDeclaredMadeForKids: madeForKids === 'true' || madeForKids === true,
             },
           },
         });
@@ -391,7 +471,7 @@ app.post('/api/upload', upload.fields([
         description,
         tags: tagsArr,
         category_id: categoryId,
-        privacy_status: privacyStatus || 'private',
+        privacy_status: isScheduled ? 'scheduled' : (privacyStatus || 'private'),
         youtube_video_id: youtubeVideoId,
         upload_status: 'success',
         youtube_url: `https://www.youtube.com/watch?v=${youtubeVideoId}`,
@@ -410,8 +490,9 @@ app.post('/api/upload', upload.fields([
 
     res.end();
   } catch (err) {
-    const msg = err.response?.data?.error?.message || err.message;
-    console.error('Upload error:', msg);
+    const fullErr = err.response?.data || err.message;
+    console.error('Upload error:', JSON.stringify(fullErr, null, 2));
+    const msg = err.response?.data?.error?.message || (typeof fullErr === 'string' ? fullErr : JSON.stringify(fullErr)) || err.message;
     send({ stage: 'error', message: msg });
     res.end();
   }
@@ -454,6 +535,7 @@ cron.schedule('* * * * *', async () => {
       .from('upload_history')
       .select('*')
       .eq('upload_status', 'success')
+      .eq('privacy_status', 'scheduled')
       .lte('scheduled_at', now.toISOString())
       .is('published_at', null)
       .limit(10);
@@ -463,21 +545,28 @@ cron.schedule('* * * * *', async () => {
       return;
     }
 
-    for (const upload of scheduled || []) {
+    for (const up of scheduled || []) {
       try {
-        const { data: user } = await supabase.from('users').select('*').eq('id', upload.user_id).single();
+        const { data: user } = await supabase.from('users').select('*').eq('id', up.user_id).single();
         if (!user) continue;
 
-        const oauth2Client = getAuthedClient(user.tokens);
+        // Build a token set compatible with getValidTokens / getAuthedClient
+        let tokens = {
+          access_token: user.access_token,
+          refresh_token: user.refresh_token,
+          expiry_date: user.token_expiry ? new Date(user.token_expiry).getTime() : 0,
+        };
+
+        const { oauth2Client } = await getValidTokens({ userId: user.id, tokens });
         const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
 
-        // Update privacy status from scheduled to public
+        // Update privacy status from scheduled (private) to public
         await youtube.videos.update({
           part: ['status'],
           requestBody: {
-            id: upload.youtube_video_id,
+            id: up.youtube_video_id,
             status: {
-              privacyStatus: upload.privacy_status === 'scheduled' ? 'public' : upload.privacy_status,
+              privacyStatus: 'public',
             },
           },
         });
@@ -485,11 +574,12 @@ cron.schedule('* * * * *', async () => {
         // Mark as published
         await supabase.from('upload_history').update({
           published_at: now.toISOString(),
-        }).eq('id', upload.id);
+          privacy_status: 'public',
+        }).eq('id', up.id);
 
-        console.log(`Published scheduled video: ${upload.youtube_video_id}`);
+        console.log(`Published scheduled video: ${up.youtube_video_id}`);
       } catch (err) {
-        console.error(`Error publishing ${upload.youtube_video_id}:`, err.message);
+        console.error(`Error publishing ${up.youtube_video_id}:`, err.message);
       }
     }
   } catch (err) {
