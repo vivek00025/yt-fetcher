@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const { createClient } = require('@supabase/supabase-js');
 const multer = require('multer');
+const cron = require('node-cron');
 
 const app = express();
 app.use(express.json({ limit: '20mb' }));
@@ -14,7 +15,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// multer: store uploads in memory (for Vercel) or disk for large files
 const upload = multer({ storage: multer.memoryStorage() });
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-production';
@@ -204,7 +204,7 @@ app.get('/api/video/:videoId', async (req, res) => {
       publishedAt: snippet.publishedAt,
       thumbnail: snippet.thumbnails?.maxres?.url || snippet.thumbnails?.high?.url,
       statistics: stats,
-      categoryId: snippet.categoryId,   // ← included for frontend auto-select
+      categoryId: snippet.categoryId,
     };
 
     if (session.userId) {
@@ -231,10 +231,7 @@ app.get('/api/video/:videoId', async (req, res) => {
   }
 });
 
-// ─── API: Upload (SSE with real progress) ─────────────────────────────────
-// Accepts multipart/form-data: video (file), thumbnail (file, optional),
-// title, description, tags, categoryId, privacyStatus
-// Streams SSE events: uploading (progress %), uploaded, thumbnail, done, error
+// ─── API: Upload (with scheduling and made-for-kids) ──────────────────────
 app.post('/api/upload', upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 },
@@ -245,9 +242,9 @@ app.post('/api/upload', upload.fields([
   const videoFile = req.files?.video?.[0];
   if (!videoFile) return res.status(400).json({ error: 'No video file provided' });
 
-  const { title, description, tags, categoryId, privacyStatus } = req.body;
+  const { title, description, tags, categoryId, privacyStatus, madeForKids, publishAt } = req.body;
 
-  // ── SSE setup ──
+  // SSE setup
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -271,21 +268,27 @@ app.post('/api/upload', upload.fields([
     const fileSize = videoFile.size;
     const mimeType = videoFile.mimetype || 'video/mp4';
     const tagsArr = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    const isScheduled = publishAt ? true : false;
+    const pubStatus = isScheduled ? 'scheduled' : (privacyStatus || 'private');
 
-    // ── Step 1: init resumable upload ──
     send({ stage: 'uploading', progress: 0, message: 'Initialising upload…' });
 
-    const initResp = await axios.post(
-      'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
-      {
-        snippet: {
-          title: title || 'My Video',
-          description: description || '',
-          tags: tagsArr,
-          categoryId: categoryId || '22',
-        },
-        status: { privacyStatus: privacyStatus || 'private' },
+    // Build upload request
+    const uploadBody = {
+      snippet: {
+        title: title || 'My Video',
+        description: description || '',
+        tags: tagsArr,
+        categoryId: categoryId || '22',
       },
+      status: { privacyStatus: pubStatus },
+      processingDetails: {},
+      selfDeclaredMadeForKids: madeForKids === 'true' || madeForKids === true,
+    };
+
+    const initResp = await axios.post(
+      'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status,processingDetails',
+      uploadBody,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -299,8 +302,8 @@ app.post('/api/upload', upload.fields([
     const uploadUri = initResp.headers.location;
     if (!uploadUri) throw new Error('YouTube did not return an upload URI');
 
-    // ── Step 2: chunked PUT with progress ──
-    const CHUNK = 8 * 1024 * 1024; // 8 MB chunks
+    // Chunked upload
+    const CHUNK = 8 * 1024 * 1024;
     const buffer = videoFile.buffer;
     let offset = 0;
     let youtubeVideoId = null;
@@ -328,14 +331,13 @@ app.post('/api/upload', upload.fields([
         youtubeVideoId = chunkResp.data?.id;
         break;
       }
-      // 308 Resume Incomplete — continue loop
     }
 
     if (!youtubeVideoId) throw new Error('Upload completed but no video ID returned');
 
     send({ stage: 'uploaded', progress: 100, message: 'Video uploaded! Processing metadata…' });
 
-    // ── Step 3: thumbnail (optional) ──
+    // Thumbnail
     const thumbFile = req.files?.thumbnail?.[0];
     if (thumbFile) {
       try {
@@ -358,7 +360,30 @@ app.post('/api/upload', upload.fields([
       }
     }
 
-    // ── Step 4: log to Supabase ──
+    // Schedule if needed
+    let scheduledTime = null;
+    if (isScheduled && publishAt) {
+      scheduledTime = new Date(publishAt).toISOString();
+      // Store scheduled job (set status to scheduled)
+      const youtube = google.youtube({ version: 'v3', auth: getAuthedClient(session.tokens) });
+      try {
+        await youtube.videos.update({
+          part: ['status'],
+          requestBody: {
+            id: youtubeVideoId,
+            status: {
+              privacyStatus: privacyStatus || 'private',
+              publishAt: scheduledTime,
+            },
+          },
+        });
+        send({ stage: 'uploaded', message: 'Video scheduled for publishing!' });
+      } catch (schedErr) {
+        console.warn('Schedule error:', schedErr.message);
+      }
+    }
+
+    // Log to Supabase
     if (session.userId) {
       const { error: dbErr } = await supabase.from('upload_history').insert({
         user_id: session.userId,
@@ -370,11 +395,12 @@ app.post('/api/upload', upload.fields([
         youtube_video_id: youtubeVideoId,
         upload_status: 'success',
         youtube_url: `https://www.youtube.com/watch?v=${youtubeVideoId}`,
+        made_for_kids: madeForKids === 'true' || madeForKids === true,
+        scheduled_at: scheduledTime,
       });
       if (dbErr) console.warn('DB log error:', dbErr.message);
     }
 
-    // ── Done ──
     send({
       stage: 'done',
       videoId: youtubeVideoId,
@@ -391,107 +417,6 @@ app.post('/api/upload', upload.fields([
   }
 });
 
-// ─── API: Init Resumable Upload (kept for legacy / client-side use) ────────
-app.post('/api/upload/init', async (req, res) => {
-  const session = getSession(req);
-  if (!session) return res.status(401).json({ error: 'Not authenticated' });
-
-  const { title, description, tags, categoryId, privacyStatus, fileSize, mimeType, sourceVideoId } = req.body;
-
-  try {
-    const initResponse = await axios.post(
-      'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
-      {
-        snippet: {
-          title: title || 'My Video',
-          description: description || '',
-          tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-          categoryId: categoryId || '22',
-        },
-        status: { privacyStatus: privacyStatus || 'private' },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${session.tokens.access_token}`,
-          'Content-Type': 'application/json',
-          'X-Upload-Content-Type': mimeType || 'video/mp4',
-          'X-Upload-Content-Length': fileSize,
-        },
-      }
-    );
-
-    const uploadUri = initResponse.headers.location;
-    if (!uploadUri) throw new Error('YouTube did not return an upload URI');
-
-    let uploadRecordId = null;
-    if (session.userId) {
-      const { data } = await supabase.from('upload_history').insert({
-        user_id: session.userId,
-        title, description,
-        tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-        category_id: categoryId,
-        privacy_status: privacyStatus || 'private',
-        source_video_id: sourceVideoId || null,
-        upload_status: 'pending',
-      }).select().single();
-      uploadRecordId = data?.id;
-    }
-
-    res.json({ uploadUri, uploadRecordId });
-  } catch (err) {
-    console.error('Upload init error:', err.response?.data || err.message);
-    res.status(500).json({ error: err.response?.data?.error?.message || err.message });
-  }
-});
-
-// ─── API: Confirm Upload ───────────────────────────────────────────────────
-app.post('/api/upload/confirm', async (req, res) => {
-  const session = getSession(req);
-  if (!session) return res.status(401).json({ error: 'Not authenticated' });
-  const { uploadRecordId, youtubeVideoId, success, errorMessage } = req.body;
-  try {
-    if (uploadRecordId && session.userId) {
-      await supabase.from('upload_history').update({
-        youtube_video_id: youtubeVideoId || null,
-        upload_status: success ? 'success' : 'failed',
-        error_message: errorMessage || null,
-        youtube_url: youtubeVideoId ? `https://www.youtube.com/watch?v=${youtubeVideoId}` : null,
-      }).eq('id', uploadRecordId).eq('user_id', session.userId);
-    }
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── API: Thumbnail (standalone) ──────────────────────────────────────────
-app.post('/api/upload/thumbnail', async (req, res) => {
-  const session = getSession(req);
-  if (!session) return res.status(401).json({ error: 'Not authenticated' });
-  const { videoId, dataUrl, mimeType } = req.body;
-  if (!videoId || !dataUrl) return res.status(400).json({ error: 'Missing videoId or dataUrl' });
-  try {
-    const base64Data = dataUrl.replace(/^data:[^;]+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
-    await axios.post(
-      `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${encodeURIComponent(videoId)}&uploadType=media`,
-      buffer,
-      {
-        headers: {
-          Authorization: `Bearer ${session.tokens.access_token}`,
-          'Content-Type': mimeType || 'image/jpeg',
-          'Content-Length': buffer.length,
-        },
-        maxBodyLength: Infinity,
-      }
-    );
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('Thumbnail error:', err.response?.data || err.message);
-    res.status(500).json({ error: err.response?.data?.error?.message || err.message });
-  }
-});
-
 // ─── API: History ──────────────────────────────────────────────────────────
 app.get('/api/history/searches', async (req, res) => {
   const session = getSession(req);
@@ -500,6 +425,15 @@ app.get('/api/history/searches', async (req, res) => {
     .eq('user_id', session.userId).order('searched_at', { ascending: false }).limit(20);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ searches: data });
+});
+
+app.get('/api/history/uploads', async (req, res) => {
+  const session = getSession(req);
+  if (!session?.userId) return res.status(401).json({ error: 'Not authenticated' });
+  const { data, error } = await supabase.from('upload_history').select('*')
+    .eq('user_id', session.userId).order('uploaded_at', { ascending: false }).limit(50);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ uploads: data });
 });
 
 app.get('/api/history/saved', async (req, res) => {
@@ -511,13 +445,56 @@ app.get('/api/history/saved', async (req, res) => {
   res.json({ saved: data });
 });
 
-app.get('/api/history/uploads', async (req, res) => {
-  const session = getSession(req);
-  if (!session?.userId) return res.status(401).json({ error: 'Not authenticated' });
-  const { data, error } = await supabase.from('upload_history').select('*')
-    .eq('user_id', session.userId).order('uploaded_at', { ascending: false }).limit(20);
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ uploads: data });
+// ─── Scheduled Upload Processing ──────────────────────────────────────────
+// Run every minute to check for scheduled uploads
+cron.schedule('* * * * *', async () => {
+  try {
+    const now = new Date();
+    const { data: scheduled, error } = await supabase
+      .from('upload_history')
+      .select('*')
+      .eq('upload_status', 'success')
+      .lte('scheduled_at', now.toISOString())
+      .is('published_at', null)
+      .limit(10);
+
+    if (error) {
+      console.error('Schedule check error:', error.message);
+      return;
+    }
+
+    for (const upload of scheduled || []) {
+      try {
+        const { data: user } = await supabase.from('users').select('*').eq('id', upload.user_id).single();
+        if (!user) continue;
+
+        const oauth2Client = getAuthedClient(user.tokens);
+        const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+
+        // Update privacy status from scheduled to public
+        await youtube.videos.update({
+          part: ['status'],
+          requestBody: {
+            id: upload.youtube_video_id,
+            status: {
+              privacyStatus: upload.privacy_status === 'scheduled' ? 'public' : upload.privacy_status,
+            },
+          },
+        });
+
+        // Mark as published
+        await supabase.from('upload_history').update({
+          published_at: now.toISOString(),
+        }).eq('id', upload.id);
+
+        console.log(`Published scheduled video: ${upload.youtube_video_id}`);
+      } catch (err) {
+        console.error(`Error publishing ${upload.youtube_video_id}:`, err.message);
+      }
+    }
+  } catch (err) {
+    console.error('Cron job error:', err.message);
+  }
 });
 
 // ─── Start ─────────────────────────────────────────────────────────────────
