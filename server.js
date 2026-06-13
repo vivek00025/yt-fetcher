@@ -2,12 +2,11 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const { google } = require('googleapis');
-const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const axios = require('axios');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -15,19 +14,9 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'yt-metadata-secret-change-me',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
+  cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 24 * 60 * 60 * 1000 }
 }));
 
-// ─── Multer — store uploads in /tmp ────────────────────────────────────────────
-const upload = multer({
-  dest: '/tmp/yt-uploads/',
-  limits: { fileSize: 10 * 1024 * 1024 * 1024 }, // 10 GB max
-});
-
-// Make sure upload dir exists
-fs.mkdirSync('/tmp/yt-uploads/', { recursive: true });
-
-// ─── OAuth2 Client ─────────────────────────────────────────────────────────────
 function getOAuth2Client() {
   return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -45,7 +34,7 @@ function getAuthedClient(req) {
   return oauth2Client;
 }
 
-// ─── Auth Routes ───────────────────────────────────────────────────────────────
+// Auth routes
 app.get('/auth/login', (req, res) => {
   const oauth2Client = getOAuth2Client();
   const scopes = [
@@ -60,6 +49,8 @@ app.get('/auth/login', (req, res) => {
   });
   res.redirect(url);
 });
+
+app.get('/api/auth/login', (req, res) => res.redirect('/auth/login'));
 
 app.get('/auth/callback', async (req, res) => {
   const { code, error } = req.query;
@@ -84,7 +75,7 @@ app.get('/auth/status', (req, res) => {
   res.json({ authenticated: !!req.session.tokens });
 });
 
-// ─── API: Search Videos ────────────────────────────────────────────────────────
+// Search
 app.get('/api/search', async (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Missing query' });
@@ -115,7 +106,7 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-// ─── API: Get Video Metadata ───────────────────────────────────────────────────
+// Video metadata
 app.get('/api/video/:videoId', async (req, res) => {
   const { videoId } = req.params;
   if (!req.session.tokens) return res.status(401).json({ error: 'Not authenticated' });
@@ -149,104 +140,82 @@ app.get('/api/video/:videoId', async (req, res) => {
   }
 });
 
-// ─── API: Upload Video ─────────────────────────────────────────────────────────
-app.post('/api/upload',
-  upload.fields([
-    { name: 'video', maxCount: 1 },
-    { name: 'thumbnail', maxCount: 1 }
-  ]),
-  async (req, res) => {
-    if (!req.session.tokens) return res.status(401).json({ error: 'Not authenticated' });
+// Init resumable upload — returns YouTube upload URI
+app.post('/api/upload/init', async (req, res) => {
+  if (!req.session.tokens) return res.status(401).json({ error: 'Not authenticated' });
 
-    const videoFile = req.files?.video?.[0];
-    const thumbnailFile = req.files?.thumbnail?.[0];
+  const { title, description, tags, categoryId, privacyStatus, fileSize, mimeType } = req.body;
 
-    if (!videoFile) return res.status(400).json({ error: 'No video file provided' });
+  try {
+    const accessToken = req.session.tokens.access_token;
 
-    const { title, description, tags, privacyStatus, categoryId } = req.body;
-
-    // Set up SSE for progress streaming
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders();
-
-    const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
-
-    try {
-      const youtube = google.youtube({ version: 'v3', auth: getAuthedClient(req) });
-
-      send({ stage: 'uploading', message: 'Uploading video to YouTube…', progress: 0 });
-
-      const videoSize = fs.statSync(videoFile.path).size;
-      let uploadedBytes = 0;
-
-      const response = await youtube.videos.insert({
-        part: ['snippet', 'status'],
-        requestBody: {
-          snippet: {
-            title: title || 'My Video',
-            description: description || '',
-            tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-            categoryId: categoryId || '22', // People & Blogs default
-          },
-          status: {
-            privacyStatus: privacyStatus || 'private',
-          },
+    const initResponse = await axios.post(
+      'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
+      {
+        snippet: {
+          title: title || 'My Video',
+          description: description || '',
+          tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+          categoryId: categoryId || '22',
         },
-        media: {
-          body: fs.createReadStream(videoFile.path),
+        status: {
+          privacyStatus: privacyStatus || 'private',
         },
-      }, {
-        onUploadProgress: (evt) => {
-          uploadedBytes = evt.bytesRead || 0;
-          const pct = videoSize > 0 ? Math.round((uploadedBytes / videoSize) * 100) : 0;
-          send({ stage: 'uploading', message: `Uploading… ${pct}%`, progress: pct });
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Upload-Content-Type': mimeType || 'video/mp4',
+          'X-Upload-Content-Length': fileSize,
         },
-      });
-
-      const uploadedVideoId = response.data.id;
-      send({ stage: 'uploaded', message: 'Video uploaded!', progress: 100, videoId: uploadedVideoId });
-
-      // Upload thumbnail if provided
-      if (thumbnailFile && uploadedVideoId) {
-        send({ stage: 'thumbnail', message: 'Setting thumbnail…', progress: 100 });
-        try {
-          await youtube.thumbnails.set({
-            videoId: uploadedVideoId,
-            media: {
-              mimeType: thumbnailFile.mimetype,
-              body: fs.createReadStream(thumbnailFile.path),
-            },
-          });
-          send({ stage: 'thumbnail', message: 'Thumbnail set!', progress: 100 });
-        } catch (thumbErr) {
-          console.error('Thumbnail error:', thumbErr.message);
-          send({ stage: 'thumbnail_warn', message: 'Video uploaded, but thumbnail failed: ' + thumbErr.message });
-        }
       }
+    );
 
-      send({
-        stage: 'done',
-        message: 'All done!',
-        videoId: uploadedVideoId,
-        url: `https://www.youtube.com/watch?v=${uploadedVideoId}`,
-        studioUrl: `https://studio.youtube.com/video/${uploadedVideoId}/edit`,
-      });
+    const uploadUri = initResponse.headers.location;
+    if (!uploadUri) throw new Error('YouTube did not return an upload URI');
 
-    } catch (err) {
-      console.error('Upload error:', err.message);
-      send({ stage: 'error', message: err.message });
-    } finally {
-      // Clean up temp files
-      try { fs.unlinkSync(videoFile.path); } catch {}
-      if (thumbnailFile) { try { fs.unlinkSync(thumbnailFile.path); } catch {} }
-      res.end();
-    }
+    res.json({ uploadUri });
+  } catch (err) {
+    console.error('Upload init error:', err.response?.data || err.message);
+    const msg = err.response?.data?.error?.message || err.message;
+    res.status(500).json({ error: msg });
   }
-);
+});
 
-// ─── Start ─────────────────────────────────────────────────────────────────────
+// Thumbnail upload
+app.post('/api/upload/thumbnail', async (req, res) => {
+  if (!req.session.tokens) return res.status(401).json({ error: 'Not authenticated' });
+
+  const { videoId, dataUrl, mimeType } = req.body;
+  if (!videoId || !dataUrl) return res.status(400).json({ error: 'Missing videoId or dataUrl' });
+
+  try {
+    const accessToken = req.session.tokens.access_token;
+    const base64Data = dataUrl.replace(/^data:[^;]+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    await axios.post(
+      `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${encodeURIComponent(videoId)}&uploadType=media`,
+      buffer,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': mimeType || 'image/jpeg',
+          'Content-Length': buffer.length,
+        },
+        maxBodyLength: Infinity,
+      }
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Thumbnail error:', err.response?.data || err.message);
+    const msg = err.response?.data?.error?.message || err.message;
+    res.status(500).json({ error: msg });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
