@@ -1,28 +1,51 @@
 require('dotenv').config();
 const express = require('express');
-const session = require('express-session');
 const { google } = require('googleapis');
 const path = require('path');
 const axios = require('axios');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'yt-metadata-secret-change-me',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 24 * 60 * 60 * 1000 }
-}));
+const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-production';
+const COOKIE_NAME = 'yt_session';
 
-// ─── Supabase Client ───────────────────────────────────────────────────────
+// ─── Supabase ──────────────────────────────────────────────────────────────
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_ANON_KEY
 );
+
+// ─── JWT Session Helpers ───────────────────────────────────────────────────
+function setSession(res, payload) {
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+  res.cookie(COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+}
+
+function getSession(req) {
+  try {
+    const token = req.cookies?.[COOKIE_NAME];
+    if (!token) return null;
+    return jwt.verify(token, JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
+
+function clearSession(res) {
+  res.clearCookie(COOKIE_NAME);
+}
 
 // ─── OAuth2 Helpers ────────────────────────────────────────────────────────
 function getOAuth2Client() {
@@ -33,34 +56,23 @@ function getOAuth2Client() {
   );
 }
 
-function getAuthedClient(req) {
+function getAuthedClient(tokens) {
   const oauth2Client = getOAuth2Client();
-  oauth2Client.setCredentials(req.session.tokens);
-  oauth2Client.on('tokens', async (tokens) => {
-    req.session.tokens = { ...req.session.tokens, ...tokens };
-    if (req.session.userId) {
-      await supabase.from('users').update({
-        access_token: tokens.access_token || req.session.tokens.access_token,
-        refresh_token: tokens.refresh_token || req.session.tokens.refresh_token,
-        token_expiry: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
-      }).eq('id', req.session.userId);
-    }
-  });
+  oauth2Client.setCredentials(tokens);
   return oauth2Client;
 }
 
 // ─── Auth Routes ───────────────────────────────────────────────────────────
 app.get('/auth/login', (req, res) => {
   const oauth2Client = getOAuth2Client();
-  const scopes = [
-    'https://www.googleapis.com/auth/youtube.readonly',
-    'https://www.googleapis.com/auth/youtube.upload',
-    'https://www.googleapis.com/auth/youtube.force-ssl',
-    'https://www.googleapis.com/auth/userinfo.email',
-  ];
   const url = oauth2Client.generateAuthUrl({
     access_type: 'offline',
-    scope: scopes,
+    scope: [
+      'https://www.googleapis.com/auth/youtube.readonly',
+      'https://www.googleapis.com/auth/youtube.upload',
+      'https://www.googleapis.com/auth/youtube.force-ssl',
+      'https://www.googleapis.com/auth/userinfo.email',
+    ],
     prompt: 'consent',
   });
   res.redirect(url);
@@ -71,16 +83,18 @@ app.get('/api/auth/login', (req, res) => res.redirect('/auth/login'));
 app.get('/auth/callback', async (req, res) => {
   const { code, error } = req.query;
   if (error) return res.redirect('/?auth_error=' + encodeURIComponent(error));
+
   try {
     const oauth2Client = getOAuth2Client();
     const { tokens } = await oauth2Client.getToken(code);
-    req.session.tokens = tokens;
-
     oauth2Client.setCredentials(tokens);
+
+    // Get user email
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
     const userInfo = await oauth2.userinfo.get();
     const email = userInfo.data.email;
 
+    // Get YouTube channel info
     let channelId = null, channelTitle = null;
     try {
       const yt = google.youtube({ version: 'v3', auth: oauth2Client });
@@ -91,6 +105,7 @@ app.get('/auth/callback', async (req, res) => {
       }
     } catch (_) {}
 
+    // Upsert user in Supabase
     const { data: user, error: dbErr } = await supabase
       .from('users')
       .upsert({
@@ -104,8 +119,17 @@ app.get('/auth/callback', async (req, res) => {
       .select()
       .single();
 
-    if (dbErr) console.error('DB upsert error:', dbErr.message);
-    else req.session.userId = user.id;
+    if (dbErr) {
+      console.error('DB upsert error:', dbErr.message);
+      return res.redirect('/?auth_error=db_error');
+    }
+
+    // Store everything in JWT cookie (stateless)
+    setSession(res, {
+      userId: user.id,
+      email,
+      tokens,
+    });
 
     res.redirect('/?auth=success');
   } catch (err) {
@@ -115,28 +139,26 @@ app.get('/auth/callback', async (req, res) => {
 });
 
 app.get('/auth/logout', (req, res) => {
-  req.session.destroy();
+  clearSession(res);
   res.redirect('/');
 });
 
 app.get('/auth/status', (req, res) => {
-  res.json({ authenticated: !!req.session.tokens });
+  const session = getSession(req);
+  res.json({ authenticated: !!session, email: session?.email || null });
 });
 
-// ─── API: Search Videos ────────────────────────────────────────────────────
+// ─── API: Search ───────────────────────────────────────────────────────────
 app.get('/api/search', async (req, res) => {
+  const session = getSession(req);
+  if (!session) return res.status(401).json({ error: 'Not authenticated' });
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Missing query' });
-  if (!req.session.tokens) return res.status(401).json({ error: 'Not authenticated' });
 
   try {
-    const youtube = google.youtube({ version: 'v3', auth: getAuthedClient(req) });
+    const youtube = google.youtube({ version: 'v3', auth: getAuthedClient(session.tokens) });
     const response = await youtube.search.list({
-      part: ['snippet'],
-      q,
-      type: ['video'],
-      maxResults: 5,
-      order: 'relevance',
+      part: ['snippet'], q, type: ['video'], maxResults: 5, order: 'relevance',
     });
 
     const videos = response.data.items.map(item => ({
@@ -147,11 +169,9 @@ app.get('/api/search', async (req, res) => {
       publishedAt: item.snippet.publishedAt,
     }));
 
-    if (req.session.userId) {
+    if (session.userId) {
       await supabase.from('search_history').insert({
-        user_id: req.session.userId,
-        query: q,
-        results_count: videos.length,
+        user_id: session.userId, query: q, results_count: videos.length,
       });
     }
 
@@ -162,16 +182,16 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-// ─── API: Get Video Metadata ───────────────────────────────────────────────
+// ─── API: Video Metadata ───────────────────────────────────────────────────
 app.get('/api/video/:videoId', async (req, res) => {
+  const session = getSession(req);
+  if (!session) return res.status(401).json({ error: 'Not authenticated' });
   const { videoId } = req.params;
-  if (!req.session.tokens) return res.status(401).json({ error: 'Not authenticated' });
 
   try {
-    const youtube = google.youtube({ version: 'v3', auth: getAuthedClient(req) });
+    const youtube = google.youtube({ version: 'v3', auth: getAuthedClient(session.tokens) });
     const response = await youtube.videos.list({
-      part: ['snippet', 'statistics', 'contentDetails'],
-      id: [videoId],
+      part: ['snippet', 'statistics', 'contentDetails'], id: [videoId],
     });
 
     if (!response.data.items?.length) return res.status(404).json({ error: 'Video not found' });
@@ -192,9 +212,9 @@ app.get('/api/video/:videoId', async (req, res) => {
       categoryId: snippet.categoryId,
     };
 
-    if (req.session.userId) {
+    if (session.userId) {
       await supabase.from('saved_metadata').upsert({
-        user_id: req.session.userId,
+        user_id: session.userId,
         video_id: videoId,
         title: snippet.title,
         description: snippet.description,
@@ -218,13 +238,12 @@ app.get('/api/video/:videoId', async (req, res) => {
 
 // ─── API: Init Resumable Upload ────────────────────────────────────────────
 app.post('/api/upload/init', async (req, res) => {
-  if (!req.session.tokens) return res.status(401).json({ error: 'Not authenticated' });
+  const session = getSession(req);
+  if (!session) return res.status(401).json({ error: 'Not authenticated' });
 
   const { title, description, tags, categoryId, privacyStatus, fileSize, mimeType, sourceVideoId } = req.body;
 
   try {
-    const accessToken = req.session.tokens.access_token;
-
     const initResponse = await axios.post(
       'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
       {
@@ -238,7 +257,7 @@ app.post('/api/upload/init', async (req, res) => {
       },
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${session.tokens.access_token}`,
           'Content-Type': 'application/json',
           'X-Upload-Content-Type': mimeType || 'video/mp4',
           'X-Upload-Content-Length': fileSize,
@@ -250,11 +269,10 @@ app.post('/api/upload/init', async (req, res) => {
     if (!uploadUri) throw new Error('YouTube did not return an upload URI');
 
     let uploadRecordId = null;
-    if (req.session.userId) {
+    if (session.userId) {
       const { data } = await supabase.from('upload_history').insert({
-        user_id: req.session.userId,
-        title,
-        description,
+        user_id: session.userId,
+        title, description,
         tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
         category_id: categoryId,
         privacy_status: privacyStatus || 'private',
@@ -273,16 +291,17 @@ app.post('/api/upload/init', async (req, res) => {
 
 // ─── API: Confirm Upload ───────────────────────────────────────────────────
 app.post('/api/upload/confirm', async (req, res) => {
-  if (!req.session.tokens) return res.status(401).json({ error: 'Not authenticated' });
+  const session = getSession(req);
+  if (!session) return res.status(401).json({ error: 'Not authenticated' });
   const { uploadRecordId, youtubeVideoId, success, errorMessage } = req.body;
   try {
-    if (uploadRecordId && req.session.userId) {
+    if (uploadRecordId && session.userId) {
       await supabase.from('upload_history').update({
         youtube_video_id: youtubeVideoId || null,
         upload_status: success ? 'success' : 'failed',
         error_message: errorMessage || null,
         youtube_url: youtubeVideoId ? `https://www.youtube.com/watch?v=${youtubeVideoId}` : null,
-      }).eq('id', uploadRecordId).eq('user_id', req.session.userId);
+      }).eq('id', uploadRecordId).eq('user_id', session.userId);
     }
     res.json({ ok: true });
   } catch (err) {
@@ -290,13 +309,13 @@ app.post('/api/upload/confirm', async (req, res) => {
   }
 });
 
-// ─── API: Thumbnail Upload ─────────────────────────────────────────────────
+// ─── API: Thumbnail ────────────────────────────────────────────────────────
 app.post('/api/upload/thumbnail', async (req, res) => {
-  if (!req.session.tokens) return res.status(401).json({ error: 'Not authenticated' });
+  const session = getSession(req);
+  if (!session) return res.status(401).json({ error: 'Not authenticated' });
   const { videoId, dataUrl, mimeType } = req.body;
   if (!videoId || !dataUrl) return res.status(400).json({ error: 'Missing videoId or dataUrl' });
   try {
-    const accessToken = req.session.tokens.access_token;
     const base64Data = dataUrl.replace(/^data:[^;]+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
     await axios.post(
@@ -304,7 +323,7 @@ app.post('/api/upload/thumbnail', async (req, res) => {
       buffer,
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${session.tokens.access_token}`,
           'Content-Type': mimeType || 'image/jpeg',
           'Content-Length': buffer.length,
         },
@@ -318,33 +337,30 @@ app.post('/api/upload/thumbnail', async (req, res) => {
   }
 });
 
-// ─── API: History Endpoints ────────────────────────────────────────────────
+// ─── API: History ──────────────────────────────────────────────────────────
 app.get('/api/history/searches', async (req, res) => {
-  if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
-  const { data, error } = await supabase
-    .from('search_history').select('*')
-    .eq('user_id', req.session.userId)
-    .order('searched_at', { ascending: false }).limit(20);
+  const session = getSession(req);
+  if (!session?.userId) return res.status(401).json({ error: 'Not authenticated' });
+  const { data, error } = await supabase.from('search_history').select('*')
+    .eq('user_id', session.userId).order('searched_at', { ascending: false }).limit(20);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ searches: data });
 });
 
 app.get('/api/history/saved', async (req, res) => {
-  if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
-  const { data, error } = await supabase
-    .from('saved_metadata').select('*')
-    .eq('user_id', req.session.userId)
-    .order('saved_at', { ascending: false }).limit(20);
+  const session = getSession(req);
+  if (!session?.userId) return res.status(401).json({ error: 'Not authenticated' });
+  const { data, error } = await supabase.from('saved_metadata').select('*')
+    .eq('user_id', session.userId).order('saved_at', { ascending: false }).limit(20);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ saved: data });
 });
 
 app.get('/api/history/uploads', async (req, res) => {
-  if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
-  const { data, error } = await supabase
-    .from('upload_history').select('*')
-    .eq('user_id', req.session.userId)
-    .order('uploaded_at', { ascending: false }).limit(20);
+  const session = getSession(req);
+  if (!session?.userId) return res.status(401).json({ error: 'Not authenticated' });
+  const { data, error } = await supabase.from('upload_history').select('*')
+    .eq('user_id', session.userId).order('uploaded_at', { ascending: false }).limit(20);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ uploads: data });
 });
