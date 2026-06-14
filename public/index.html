@@ -7,26 +7,18 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
   :root {
-    --bg: #0a0a0a;
-    --surface: #111111;
-    --surface2: #1a1a1a;
-    --border: #242424;
-    --border-hover: #333;
-    --accent: #ff3c3c;
-    --accent-dim: rgba(255,60,60,0.12);
-    --accent-hover: #ff5555;
-    --text: #ebebeb;
-    --muted: #666;
-    --muted2: #999;
-    --success: #4ade80;
-    --warning: #fbbf24;
+    --bg: #0a0a0a; --surface: #111111; --surface2: #1a1a1a;
+    --border: #242424; --border-hover: #333;
+    --accent: #ff3c3c; --accent-dim: rgba(255,60,60,0.12); --accent-hover: #ff5555;
+    --text: #ebebeb; --muted: #666; --muted2: #999;
+    --success: #4ade80; --warning: #fbbf24; --info: #60a5fa;
     --radius: 10px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 40px 20px 80px; display: flex; justify-content: center; }
-  .wrap { max-width: 800px; width: 100%; }
+  .wrap { max-width: 820px; width: 100%; }
 
-  /* ── Header + Nav ── */
+  /* Header */
   .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; flex-wrap: wrap; gap: 20px; }
   .header-left { display: flex; align-items: center; gap: 20px; }
   .header h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.03em; display: flex; align-items: center; gap: 10px; }
@@ -36,7 +28,8 @@
   .nav-tab:hover { border-color: var(--accent); color: var(--text); }
   .nav-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
 
-  #authBanner { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  /* Auth Banner */
+  #authBanner { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   #authBanner.logged-out { background: #140e0e; border-color: rgba(255,60,60,0.25); }
   #authBanner.logged-in { background: #0a140e; border-color: rgba(74,222,128,0.25); }
   .auth-info { display: flex; align-items: center; gap: 10px; }
@@ -46,6 +39,22 @@
   .auth-text strong { display: block; font-weight: 600; font-size: 0.875rem; }
   .auth-text span { color: var(--muted2); font-size: 0.8rem; }
 
+  /* Channel Switcher Banner */
+  #channelBanner { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 24px; background: var(--surface); display: none; }
+  #channelBanner.visible { display: block; }
+  .channel-banner-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .channel-banner-label { font-size: 0.78rem; color: var(--muted2); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 10px; }
+  .channels-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .channel-pill { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.15s; background: var(--surface2); font-size: 0.82rem; font-weight: 500; }
+  .channel-pill:hover { border-color: var(--accent); background: #1a1212; }
+  .channel-pill.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+  .channel-pill img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: #333; }
+  .channel-pill .ch-badge { font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
+  .channel-pill .ch-badge.own { background: rgba(74,222,128,0.12); color: var(--success); }
+  .channel-pill .ch-badge.managed { background: rgba(96,165,250,0.12); color: var(--info); }
+  .channel-loading { font-size: 0.82rem; color: var(--muted2); display: flex; align-items: center; gap: 8px; }
+
+  /* Buttons */
   .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 8px; font-size: 0.875rem; font-weight: 600; cursor: pointer; border: none; transition: background 0.15s, transform 0.1s; white-space: nowrap; font-family: inherit; text-decoration: none; }
   .btn:active { transform: scale(0.98); }
   .btn-primary { background: var(--accent); color: white; }
@@ -54,9 +63,12 @@
   .btn-secondary:hover { border-color: var(--border-hover); }
   .btn-ghost { background: transparent; color: var(--muted2); border: 1px solid var(--border); }
   .btn-ghost:hover { color: var(--text); border-color: var(--border-hover); }
+  .btn-ai { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; }
+  .btn-ai:hover { background: linear-gradient(135deg, #4f46e5, #7c3aed); }
   .btn-sm { padding: 5px 11px; font-size: 0.8rem; }
   .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
+  /* Steps */
   .step { border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
   .step-header { padding: 15px 18px; background: var(--surface); display: flex; align-items: center; gap: 12px; }
   .step-num { width: 26px; height: 26px; border-radius: 50%; background: var(--accent-dim); border: 1px solid rgba(255,60,60,0.3); color: var(--accent); font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -67,6 +79,7 @@
   .step.locked { opacity: 0.42; pointer-events: none; }
   .step.locked .step-body { display: none; }
 
+  /* Form */
   label.fl { display: block; font-size: 0.8rem; font-weight: 500; color: var(--muted2); margin-bottom: 6px; letter-spacing: 0.02em; }
   input[type="text"], textarea, select, input[type="datetime-local"] { width: 100%; padding: 10px 12px; background: #0f0f0f; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.9rem; font-family: inherit; transition: border-color 0.15s; outline: none; }
   input[type="text"]:focus, textarea:focus, select:focus, input[type="datetime-local"]:focus { border-color: var(--accent); }
@@ -75,6 +88,7 @@
   .field { margin-bottom: 14px; }
   .field:last-child { margin-bottom: 0; }
 
+  /* Search results */
   .search-results { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
   .video-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
   .video-card:hover { border-color: var(--accent); background: #1a1212; }
@@ -86,6 +100,7 @@
   .use-btn { font-size: 0.75rem; padding: 5px 10px; border-radius: 6px; background: var(--accent-dim); border: 1px solid rgba(255,60,60,0.3); color: var(--accent); cursor: pointer; white-space: nowrap; font-weight: 600; font-family: inherit; transition: background 0.15s; flex-shrink: 0; }
   .use-btn:hover { background: rgba(255,60,60,0.22); }
 
+  /* Meta blocks */
   .meta-block { background: #0f0f0f; border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 0.875rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; color: var(--muted2); margin-top: 6px; }
   .meta-row { margin-bottom: 14px; }
   .meta-row:last-child { margin-bottom: 0; }
@@ -96,9 +111,9 @@
   .stats-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
   .stat-chip { font-size: 0.78rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; color: var(--muted2); }
   .stat-chip strong { color: var(--text); }
-
   .category-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,60,60,0.1); border: 1px solid rgba(255,60,60,0.25); border-radius: 6px; padding: 4px 10px; font-size: 0.78rem; color: var(--accent); font-weight: 500; margin-top: 10px; }
 
+  /* File drop */
   .drop-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 24px; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; position: relative; }
   .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: var(--accent-dim); }
   .drop-zone.has-file { border-color: rgba(74,222,128,0.4); background: rgba(74,222,128,0.05); }
@@ -108,9 +123,9 @@
   .drop-sub { font-size: 0.78rem; color: var(--muted2); margin-top: 4px; }
   .drop-filename { font-size: 0.82rem; color: var(--success); margin-top: 6px; font-weight: 500; }
 
+  /* Layout */
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 540px) { .two-col { grid-template-columns: 1fr; } }
-
   .privacy-row { display: flex; gap: 8px; }
   .privacy-opt { flex: 1; }
   .privacy-opt input[type="radio"], .checkbox-item input[type="checkbox"] { display: none; }
@@ -119,15 +134,52 @@
   .privacy-opt label .psub, .checkbox-item label .psub { font-size: 0.72rem; color: var(--muted2); font-weight: 400; }
   .privacy-opt input:checked + label, .checkbox-item input:checked + label { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
 
-  /* ── Link Management ── */
-  .link-section { background: #0f0f0f; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 10px; }
-  .link-item { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
-  .link-item input { flex: 1; }
-  .link-item button { padding: 6px 10px; font-size: 0.75rem; background: rgba(255,60,60,0.1); border: 1px solid rgba(255,60,60,0.3); color: var(--accent); border-radius: 6px; cursor: pointer; }
-  .link-item button:hover { background: rgba(255,60,60,0.2); }
-  .add-link-btn { padding: 6px 12px; font-size: 0.8rem; background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); color: var(--success); border-radius: 6px; cursor: pointer; font-weight: 500; }
+  /* ── AI Enhance Panel ── */
+  .ai-panel { border: 1px solid rgba(99,102,241,0.3); border-radius: 10px; background: rgba(99,102,241,0.05); padding: 14px; margin-top: 10px; }
+  .ai-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .ai-panel-title { font-size: 0.85rem; font-weight: 600; color: #a5b4fc; display: flex; align-items: center; gap: 6px; }
+  .ai-field { margin-bottom: 10px; }
+  .ai-field label.fl { color: #a5b4fc; }
+  .ai-field input[type="text"], .ai-field textarea { border-color: rgba(99,102,241,0.25); }
+  .ai-field input[type="text"]:focus, .ai-field textarea:focus { border-color: #6366f1; }
+  .kw-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .kw-chip { display: inline-flex; align-items: center; gap: 5px; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3); border-radius: 20px; padding: 3px 10px; font-size: 0.78rem; color: #a5b4fc; }
+  .kw-chip button { background: none; border: none; color: #6366f1; cursor: pointer; font-size: 0.75rem; padding: 0; line-height: 1; }
+  .kw-input-row { display: flex; gap: 8px; margin-top: 8px; }
+  .kw-input-row input { flex: 1; }
+  .ai-result-box { background: #0d0d1a; border: 1px solid rgba(99,102,241,0.2); border-radius: 8px; padding: 12px; font-size: 0.875rem; line-height: 1.7; color: var(--text); white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow-y: auto; margin-top: 10px; display: none; }
+  .ai-result-box.visible { display: block; }
+  .ai-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .ai-generating { display: none; align-items: center; gap: 8px; font-size: 0.82rem; color: #a5b4fc; margin-top: 8px; }
+  .ai-generating.visible { display: flex; }
+  .ai-spinner { width: 14px; height: 14px; border: 2px solid rgba(99,102,241,0.3); border-top-color: #6366f1; border-radius: 50%; animation: spin 0.7s linear infinite; }
 
-  /* ── Upload progress ── */
+  /* ── Client Links Panel ── */
+  .links-panel { border: 1px solid rgba(74,222,128,0.2); border-radius: 10px; background: rgba(74,222,128,0.04); padding: 14px; margin-top: 10px; }
+  .links-panel-header { font-size: 0.85rem; font-weight: 600; color: #6ee7b7; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .link-group { margin-bottom: 14px; }
+  .link-group:last-child { margin-bottom: 0; }
+  .link-group-title { font-size: 0.75rem; font-weight: 600; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .link-row { display: flex; gap: 8px; margin-bottom: 6px; align-items: center; }
+  .link-row input[type="text"] { flex: 1; border-color: rgba(74,222,128,0.2); }
+  .link-row input[type="text"]:focus { border-color: var(--success); }
+  .link-row .link-label-input { width: 120px; flex: none; }
+  .link-remove { background: rgba(255,60,60,0.1); border: 1px solid rgba(255,60,60,0.25); color: var(--accent); border-radius: 6px; cursor: pointer; padding: 6px 10px; font-size: 0.75rem; white-space: nowrap; }
+  .link-remove:hover { background: rgba(255,60,60,0.2); }
+  .add-link-btn-green { padding: 6px 12px; font-size: 0.8rem; background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.25); color: var(--success); border-radius: 6px; cursor: pointer; font-weight: 500; font-family: inherit; }
+  .link-desc-preview { font-size: 0.78rem; color: var(--muted2); margin-top: 10px; line-height: 1.6; background: #0f0f0f; border: 1px solid var(--border); border-radius: 6px; padding: 10px; white-space: pre-wrap; max-height: 120px; overflow-y: auto; display: none; }
+  .link-desc-preview.visible { display: block; }
+
+  /* Collapsible */
+  .collapsible { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; background: var(--surface); }
+  .collapsible-header { padding: 12px 14px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 500; font-size: 0.9rem; user-select: none; }
+  .collapsible-header:hover { background: var(--surface2); }
+  .collapsible-toggle { font-size: 0.9rem; color: var(--muted2); transition: transform 0.2s; }
+  .collapsible.expanded .collapsible-toggle { transform: rotate(180deg); }
+  .collapsible-body { padding: 14px; border-top: 1px solid var(--border); display: none; }
+  .collapsible.expanded .collapsible-body { display: block; }
+
+  /* Upload progress */
   .progress-wrap { margin-top: 16px; }
   .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
   .progress-label { font-size: 0.82rem; font-weight: 600; color: var(--text); }
@@ -143,19 +195,11 @@
   .stage-pill.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
   .stage-pill.complete { border-color: rgba(74,222,128,0.3); color: var(--success); background: rgba(74,222,128,0.08); }
   .progress-msg { font-size: 0.8rem; color: var(--muted2); margin-top: 6px; min-height: 1.2em; }
-
   .done-card { background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.25); border-radius: 10px; padding: 18px; margin-top: 14px; }
   .done-card h3 { font-size: 1rem; font-weight: 600; color: var(--success); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
   .done-links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
 
-  .status { font-size: 0.82rem; margin-top: 8px; min-height: 1.2em; display: flex; align-items: center; gap: 6px; }
-  .status.error { color: #ff8080; }
-  .status.success { color: var(--success); }
-  .status.loading { color: var(--muted2); }
-  .spinner { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ── Dashboard ── */
+  /* Dashboard */
   .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
   .dashboard-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
   .dashboard-card h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; }
@@ -169,30 +213,29 @@
   .status-badge.success { background: rgba(74,222,128,0.1); color: var(--success); }
   .status-badge.pending { background: rgba(251,191,36,0.1); color: var(--warning); }
 
+  .status { font-size: 0.82rem; margin-top: 8px; min-height: 1.2em; display: flex; align-items: center; gap: 6px; }
+  .status.error { color: #ff8080; }
+  .status.success { color: var(--success); }
+  .status.loading { color: var(--muted2); }
+  .spinner { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .flex1 { flex: 1; }
   .mt8 { margin-top: 8px; }
   .mt14 { margin-top: 14px; }
   .tip { font-size: 0.8rem; color: var(--muted2); line-height: 1.6; margin-bottom: 14px; }
-  
-  /* ── Sections ── */
   .section { display: none; }
   .section.active { display: block; }
-  
-  /* ── Expandable section ── */
-  .collapsible { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; background: var(--surface); }
-  .collapsible-header { padding: 12px 14px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 500; font-size: 0.9rem; }
-  .collapsible-header:hover { background: var(--surface2); }
-  .collapsible-toggle { font-size: 0.9rem; color: var(--muted2); }
-  .collapsible.expanded .collapsible-toggle { transform: rotate(180deg); }
-  .collapsible-body { padding: 14px; border-top: 1px solid var(--border); display: none; }
-  .collapsible.expanded .collapsible-body { display: block; }
+
+  .char-counter { font-size: 0.72rem; color: var(--muted2); text-align: right; margin-top: 3px; }
+  .char-counter.warn { color: var(--warning); }
+  .char-counter.over { color: var(--accent); }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <!-- Header with Navigation -->
   <div class="header">
     <div class="header-left">
       <h1><span class="icon">▶</span> YouTube Pro</h1>
@@ -217,8 +260,17 @@
     </div>
   </div>
 
+  <!-- Channel Switcher -->
+  <div id="channelBanner">
+    <div class="channel-banner-label">Upload target channel</div>
+    <div id="channelsList" class="channels-list">
+      <div class="channel-loading"><div class="spinner"></div> Loading channels…</div>
+    </div>
+  </div>
+
   <!-- ── UPLOAD TAB ── -->
   <div id="uploadTab" class="section active">
+
     <!-- Step 1: Search -->
     <div class="step locked" id="step1">
       <div class="step-header">
@@ -252,7 +304,7 @@
             <div class="meta-block" id="srcTitle"></div>
           </div>
           <div id="srcCategoryWrap" style="display:none;">
-            <div class="category-badge" id="srcCategoryBadge">📂 <span id="srcCategoryName"></span></div>
+            <div class="category-badge">📂 <span id="srcCategoryName"></span></div>
           </div>
           <div id="statsRow" class="stats-row"></div>
           <div class="meta-row mt14">
@@ -267,50 +319,170 @@
       </div>
     </div>
 
-    <!-- Step 3: Edit metadata + Link Management -->
+    <!-- Step 3: Edit metadata -->
     <div class="step locked" id="step3">
       <div class="step-header">
         <div class="step-num" id="sn3">3</div>
         <div class="step-title">Edit your metadata</div>
       </div>
       <div class="step-body">
-        <p class="tip">Pre-filled from the source video. Tweak to make it yours — avoid copying verbatim.</p>
-        
+        <p class="tip">Pre-filled from the source. Tweak title &amp; description — use the AI enhancer to rewrite the description while preserving your SEO keywords.</p>
+
+        <!-- Title -->
         <div class="field">
           <label class="fl">Title</label>
-          <input type="text" id="yourTitle" maxlength="100">
-          <div class="status" id="titleStatus" style="font-size:0.75rem;margin-top:4px;"></div>
+          <input type="text" id="yourTitle" maxlength="100" oninput="updateCharCounter('yourTitle','titleCounter',100)">
+          <div class="char-counter" id="titleCounter">0 / 100</div>
         </div>
 
+        <!-- Description + AI Enhance -->
         <div class="field">
-          <label class="fl">Description</label>
-          <textarea id="yourDesc" style="min-height:120px;"></textarea>
-          <div class="status" id="descStatus" style="font-size:0.75rem;margin-top:4px;"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <label class="fl" style="margin-bottom:0;">Description</label>
+            <button class="btn btn-ai btn-sm" onclick="toggleAiPanel()">✨ AI Enhance</button>
+          </div>
+          <textarea id="yourDesc" style="min-height:130px;" oninput="updateCharCounter('yourDesc','descCounter',5000)"></textarea>
+          <div class="char-counter" id="descCounter">0 / 5000</div>
         </div>
 
-        <!-- Link Management Section -->
-        <div class="collapsible">
+        <!-- AI Enhancement Panel -->
+        <div class="ai-panel" id="aiPanel" style="display:none;">
+          <div class="ai-panel-header">
+            <div class="ai-panel-title">✨ AI Description Enhancer</div>
+            <button class="btn btn-ghost btn-sm" onclick="toggleAiPanel()">✕ Close</button>
+          </div>
+
+          <div class="ai-field">
+            <label class="fl">Tone / Style</label>
+            <select id="aiTone">
+              <option value="engaging and professional">Engaging & Professional</option>
+              <option value="casual and friendly">Casual & Friendly</option>
+              <option value="informative and educational">Informative & Educational</option>
+              <option value="energetic and hype">Energetic & Hype</option>
+              <option value="minimal and clean">Minimal & Clean</option>
+            </select>
+          </div>
+
+          <div class="ai-field">
+            <label class="fl">Additional context for AI (optional)</label>
+            <textarea id="aiContext" style="min-height:60px;" placeholder="e.g. This video covers the top 5 tools for freelance designers in 2026. Target audience is beginners."></textarea>
+          </div>
+
+          <div class="ai-field">
+            <label class="fl">🔒 Lock these SEO keywords (will be preserved verbatim)</label>
+            <div class="kw-wrap" id="kwWrap"></div>
+            <div class="kw-input-row">
+              <input type="text" id="kwInput" placeholder="Add keyword and press Enter" onkeydown="if(event.key==='Enter'){event.preventDefault();addKeyword();}">
+              <button class="btn btn-ghost btn-sm" onclick="addKeyword()">Add</button>
+              <button class="btn btn-ghost btn-sm" onclick="importTagsAsKeywords()" title="Import from tags field">Import from tags</button>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-ai" id="enhanceBtn" onclick="enhanceDescription()">✨ Generate enhanced description</button>
+          </div>
+
+          <div class="ai-generating" id="aiGenerating">
+            <div class="ai-spinner"></div>
+            <span id="aiGenMsg">Generating…</span>
+          </div>
+
+          <div class="ai-result-box" id="aiResult"></div>
+
+          <div class="ai-actions" id="aiActions" style="display:none;">
+            <button class="btn btn-primary btn-sm" onclick="applyAiResult()">✓ Use this description</button>
+            <button class="btn btn-ghost btn-sm" onclick="enhanceDescription()">↺ Regenerate</button>
+            <button class="btn btn-ghost btn-sm" onclick="copyAiResult()">Copy</button>
+          </div>
+        </div>
+
+        <!-- Client Links Panel -->
+        <div class="collapsible expanded" id="linksCollapsible">
           <div class="collapsible-header" onclick="toggleCollapsible(this)">
-            <span>🔗 Link Management</span>
+            <span>🔗 Client Links & Channel Details</span>
             <span class="collapsible-toggle">▼</span>
           </div>
           <div class="collapsible-body">
-            <p style="font-size:0.82rem;color:var(--muted2);margin-bottom:10px;">Automatically remove links from title and description, then add your own custom links:</p>
-            <div class="checkbox-item">
-              <input type="checkbox" id="autoRemoveLinks" checked>
-              <label for="autoRemoveLinks"><span class="picon">🚫</span>Remove links<span class="psub">From title & description</span></label>
+            <p class="tip">These links are appended to your final description automatically. Existing links from the source video will be stripped.</p>
+
+            <div style="margin-bottom:10px;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.85rem;">
+                <input type="checkbox" id="autoRemoveLinks" checked style="accent-color:var(--accent);width:15px;height:15px;">
+                Auto-remove source video links from description
+              </label>
             </div>
-            <div class="link-section" id="linksSection">
-              <div style="font-size:0.78rem;color:var(--muted2);margin-bottom:8px;">Add custom links:</div>
-              <div id="customLinks"></div>
-              <button class="add-link-btn" onclick="addLinkInput()">+ Add Link</button>
+
+            <div class="links-panel">
+              <div class="links-panel-header">🔗 Custom Links for Description</div>
+
+              <!-- Website -->
+              <div class="link-group">
+                <div class="link-group-title">Website / Main Link</div>
+                <div class="link-row">
+                  <input type="text" id="linkWebsite" placeholder="https://yoursite.com" oninput="previewLinks()">
+                </div>
+              </div>
+
+              <!-- Social Media -->
+              <div class="link-group">
+                <div class="link-group-title">Social Media</div>
+                <div class="link-row">
+                  <input type="text" class="link-label-input" value="Instagram" readonly style="color:var(--muted2);">
+                  <input type="text" id="linkInsta" placeholder="https://instagram.com/yourhandle" oninput="previewLinks()">
+                </div>
+                <div class="link-row">
+                  <input type="text" class="link-label-input" value="Twitter/X" readonly style="color:var(--muted2);">
+                  <input type="text" id="linkTwitter" placeholder="https://twitter.com/yourhandle" oninput="previewLinks()">
+                </div>
+                <div class="link-row">
+                  <input type="text" class="link-label-input" value="LinkedIn" readonly style="color:var(--muted2);">
+                  <input type="text" id="linkLinkedin" placeholder="https://linkedin.com/in/yourprofile" oninput="previewLinks()">
+                </div>
+              </div>
+
+              <!-- Business / Contact -->
+              <div class="link-group">
+                <div class="link-group-title">Business Enquiries</div>
+                <div class="link-row">
+                  <input type="text" class="link-label-input" value="Email" readonly style="color:var(--muted2);">
+                  <input type="text" id="linkEmail" placeholder="contact@yourbusiness.com" oninput="previewLinks()">
+                </div>
+              </div>
+
+              <!-- Affiliate / Sponsored -->
+              <div class="link-group">
+                <div class="link-group-title">Affiliate / Sponsored Links</div>
+                <div id="affiliateLinks"></div>
+                <button class="add-link-btn-green" onclick="addAffiliateLink()">+ Add affiliate link</button>
+              </div>
+
+              <!-- Custom -->
+              <div class="link-group">
+                <div class="link-group-title">Other Links</div>
+                <div id="customLinksList"></div>
+                <button class="add-link-btn-green" onclick="addCustomLink()">+ Add custom link</button>
+              </div>
+
+              <!-- Disclaimer / Boilerplate -->
+              <div class="link-group">
+                <div class="link-group-title">Disclaimer / Footer Text (optional)</div>
+                <textarea id="linkDisclaimer" style="min-height:60px;border-color:rgba(74,222,128,0.2);" placeholder="e.g. This video contains affiliate links. I may earn a commission at no extra cost to you." oninput="previewLinks()"></textarea>
+              </div>
+
+              <!-- Preview -->
+              <div style="margin-top:10px;">
+                <div style="font-size:0.75rem;color:var(--muted2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Preview — appended to description</div>
+                <div class="link-desc-preview" id="linkPreview"></div>
+              </div>
             </div>
           </div>
         </div>
 
+        <!-- Tags -->
         <div class="field">
           <label class="fl">Tags (comma-separated, max 500 chars)</label>
-          <textarea id="yourTags" style="min-height:70px;"></textarea>
+          <textarea id="yourTags" style="min-height:70px;" oninput="updateCharCounter('yourTags','tagsCounter',500)"></textarea>
+          <div class="char-counter" id="tagsCounter">0 / 500</div>
         </div>
         <button class="btn btn-primary mt8" onclick="goToUpload()">Continue to Upload →</button>
       </div>
@@ -323,7 +495,7 @@
         <div class="step-title">Upload to YouTube</div>
       </div>
       <div class="step-body">
-        <p class="tip">Add your MP4 and (optionally) a thumbnail. The metadata from Step 3 will be used automatically.</p>
+        <p class="tip">Select your MP4 and optional thumbnail. Metadata from Step 3 applies automatically.</p>
 
         <div class="two-col" style="margin-bottom:14px;">
           <div>
@@ -345,13 +517,12 @@
               <div class="drop-sub">JPG, PNG or WebP · max 2 MB</div>
               <div class="drop-filename" id="thumbName"></div>
             </div>
-            <div id="thumbPreviewWrap" style="margin-top:8px; display:none;">
-              <img id="thumbPreview" style="width:100%; border-radius:6px; max-height:90px; object-fit:cover;">
+            <div id="thumbPreviewWrap" style="margin-top:8px;display:none;">
+              <img id="thumbPreview" style="width:100%;border-radius:6px;max-height:90px;object-fit:cover;">
             </div>
           </div>
         </div>
 
-        <!-- Category, Privacy, Made For Kids -->
         <div class="two-col" style="margin-bottom:14px;">
           <div class="field" style="margin-bottom:0;">
             <label class="fl">Category <span id="categoryAutoLabel" style="color:var(--accent);font-size:0.72rem;display:none;">· auto-set from source</span></label>
@@ -391,7 +562,6 @@
           </div>
         </div>
 
-        <!-- Made for Kids (Auto-set to No) -->
         <div class="field" style="margin-bottom:14px;">
           <label class="fl">Content Rating</label>
           <div class="privacy-row">
@@ -406,32 +576,29 @@
           </div>
         </div>
 
-        <!-- Schedule Option -->
         <div class="field" style="margin-bottom:14px;">
           <label class="fl">Publish Schedule (optional)</label>
-          <input type="datetime-local" id="scheduleTime" style="margin-bottom:6px;">
+          <input type="datetime-local" id="scheduleTime" style="margin-bottom:6px;" onchange="updateSummary()">
           <span style="font-size:0.75rem;color:var(--muted2);">Leave empty to publish immediately</span>
         </div>
 
         <!-- Metadata summary -->
-        <div id="metaSummary" style="background:#0f0f0f; border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:14px; font-size:0.82rem; line-height:1.6;">
-          <div style="color:var(--muted2); margin-bottom:4px; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">Metadata that will be applied</div>
-          <div><span style="color:var(--muted2);">Title:</span> <span id="sumTitle" style="color:var(--text);"></span></div>
+        <div style="background:#0f0f0f;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;font-size:0.82rem;line-height:1.6;">
+          <div style="color:var(--muted2);margin-bottom:4px;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Metadata that will be applied</div>
+          <div><span style="color:var(--muted2);">Channel:</span> <span id="sumChannel" style="color:var(--info);font-weight:600;"></span></div>
+          <div style="margin-top:3px;"><span style="color:var(--muted2);">Title:</span> <span id="sumTitle" style="color:var(--text);"></span></div>
           <div style="margin-top:3px;"><span style="color:var(--muted2);">Tags:</span> <span id="sumTags" style="color:var(--text);"></span></div>
           <div style="margin-top:3px;"><span style="color:var(--muted2);">Schedule:</span> <span id="sumSchedule" style="color:var(--text);"></span></div>
         </div>
 
         <button class="btn btn-primary" id="uploadBtn" onclick="startUpload()">🚀 Upload to YouTube</button>
 
-        <!-- Progress UI -->
         <div class="progress-wrap" id="progressWrap" style="display:none;">
           <div class="progress-header">
             <span class="progress-label" id="progressLabel">Uploading…</span>
             <span class="progress-pct" id="progressPct">0%</span>
           </div>
-          <div class="progress-bar-bg">
-            <div class="progress-bar" id="progressBar"></div>
-          </div>
+          <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
           <div class="progress-stages">
             <span class="stage-pill" id="stage-init">Init</span>
             <span class="stage-pill" id="stage-upload">Upload</span>
@@ -441,13 +608,11 @@
           <div class="progress-msg" id="progressMsg"></div>
         </div>
 
-        <!-- Done -->
         <div class="done-card" id="doneCard" style="display:none;">
           <h3>✅ Upload complete!</h3>
-          <div style="font-size:0.85rem; color:var(--muted2);">Your video is now on YouTube.</div>
+          <div style="font-size:0.85rem;color:var(--muted2);">Your video is now on YouTube.</div>
           <div class="done-links" id="doneLinks"></div>
         </div>
-
         <div class="status" id="uploadStatus"></div>
       </div>
     </div>
@@ -456,46 +621,21 @@
   <!-- ── DASHBOARD TAB ── -->
   <div id="dashboardTab" class="section">
     <div class="dashboard-grid" id="dashboardCards"></div>
-    
     <div class="step" id="dashboardStep">
-      <div class="step-header">
-        <div class="step-num">📊</div>
-        <div class="step-title">Recent Uploads</div>
-      </div>
+      <div class="step-header"><div class="step-num">📊</div><div class="step-title">Recent Uploads</div></div>
       <div class="step-body">
         <table class="history-table" id="uploadsTable">
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Status</th>
-              <th>Date</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="uploadsBody">
-            <tr><td colspan="4" style="text-align:center;color:var(--muted2);">No uploads yet</td></tr>
-          </tbody>
+          <thead><tr><th>Title</th><th>Channel</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+          <tbody id="uploadsBody"><tr><td colspan="5" style="text-align:center;color:var(--muted2);">No uploads yet</td></tr></tbody>
         </table>
       </div>
     </div>
-
     <div class="step">
-      <div class="step-header">
-        <div class="step-num">🔍</div>
-        <div class="step-title">Recent Searches</div>
-      </div>
+      <div class="step-header"><div class="step-num">🔍</div><div class="step-title">Recent Searches</div></div>
       <div class="step-body">
-        <table class="history-table" id="searchesTable">
-          <thead>
-            <tr>
-              <th>Query</th>
-              <th>Results</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody id="searchesBody">
-            <tr><td colspan="3" style="text-align:center;color:var(--muted2);">No searches yet</td></tr>
-          </tbody>
+        <table class="history-table">
+          <thead><tr><th>Query</th><th>Results</th><th>Date</th></tr></thead>
+          <tbody id="searchesBody"><tr><td colspan="3" style="text-align:center;color:var(--muted2);">No searches yet</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -504,9 +644,14 @@
 </div>
 
 <script>
+// ── State ──────────────────────────────────────────────────────────────────
 let rawTags = [];
 let sourceCategoryId = null;
-let customLinks = [];
+let lockedKeywords = [];
+let aiResultText = '';
+let availableChannels = [];
+let selectedChannelId = null;
+let selectedChannelTitle = 'My Channel';
 
 const CATEGORY_NAMES = {
   '1':'Film & Animation','2':'Autos & Vehicles','10':'Music','15':'Pets & Animals',
@@ -515,93 +660,319 @@ const CATEGORY_NAMES = {
   '29':'Nonprofits & Activism',
 };
 
-// ── Tab Navigation ──
+// ── Tab Navigation ──────────────────────────────────────────────────────────
 function switchTab(tabName) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  
-  if (tabName === 'upload') {
-    document.getElementById('uploadTab').classList.add('active');
-  } else if (tabName === 'dashboard') {
-    document.getElementById('dashboardTab').classList.add('active');
-    loadDashboard();
-  }
-  
+  document.getElementById(tabName + 'Tab').classList.add('active');
   document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
+  if (tabName === 'dashboard') loadDashboard();
 }
 
-// ── Collapsible ──
-function toggleCollapsible(el) {
-  el.parentElement.classList.toggle('expanded');
+// ── Collapsible ─────────────────────────────────────────────────────────────
+function toggleCollapsible(el) { el.parentElement.classList.toggle('expanded'); }
+
+// ── Char Counter ────────────────────────────────────────────────────────────
+function updateCharCounter(inputId, counterId, max) {
+  const len = document.getElementById(inputId).value.length;
+  const el = document.getElementById(counterId);
+  el.textContent = `${len} / ${max}`;
+  el.className = 'char-counter' + (len > max ? ' over' : len > max * 0.9 ? ' warn' : '');
 }
 
-// ── Link Management ──
-function addLinkInput() {
-  const container = document.getElementById('customLinks');
-  const id = 'link_' + Date.now();
-  const linkDiv = document.createElement('div');
-  linkDiv.className = 'link-item';
-  linkDiv.innerHTML = `
-    <input type="text" placeholder="https://example.com" data-link-id="${id}">
-    <button onclick="removeLink('${id}')">Remove</button>
+// ── AI Panel ────────────────────────────────────────────────────────────────
+function toggleAiPanel() {
+  const p = document.getElementById('aiPanel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+// Locked Keywords
+function addKeyword() {
+  const inp = document.getElementById('kwInput');
+  const kw = inp.value.trim();
+  if (!kw || lockedKeywords.includes(kw)) { inp.value = ''; return; }
+  lockedKeywords.push(kw);
+  renderKeywords();
+  inp.value = '';
+}
+
+function removeKeyword(kw) {
+  lockedKeywords = lockedKeywords.filter(k => k !== kw);
+  renderKeywords();
+}
+
+function renderKeywords() {
+  document.getElementById('kwWrap').innerHTML = lockedKeywords.map(kw =>
+    `<span class="kw-chip">${esc(kw)}<button onclick="removeKeyword(${JSON.stringify(kw)})">✕</button></span>`
+  ).join('');
+}
+
+function importTagsAsKeywords() {
+  const tags = document.getElementById('yourTags').value.split(',').map(t => t.trim()).filter(Boolean);
+  tags.forEach(t => { if (!lockedKeywords.includes(t)) lockedKeywords.push(t); });
+  // Also pull obvious keywords from the title
+  renderKeywords();
+}
+
+// Enhance description via Claude API
+async function enhanceDescription() {
+  const desc = document.getElementById('yourDesc').value.trim();
+  const tone = document.getElementById('aiTone').value;
+  const ctx  = document.getElementById('aiContext').value.trim();
+  const kws  = lockedKeywords;
+
+  if (!desc) { alert('Write or paste a description first.'); return; }
+
+  document.getElementById('aiGenerating').classList.add('visible');
+  document.getElementById('aiResult').classList.remove('visible');
+  document.getElementById('aiActions').style.display = 'none';
+  document.getElementById('aiGenMsg').textContent = 'Generating…';
+  document.getElementById('enhanceBtn').disabled = true;
+
+  const kwNote = kws.length
+    ? `\n\nCRITICAL: The following SEO keywords MUST appear verbatim (exact spelling, case preserved) in the final output:\n${kws.map(k => `• "${k}"`).join('\n')}`
+    : '';
+
+  const contextNote = ctx ? `\n\nAdditional context:\n${ctx}` : '';
+
+  const prompt = `You are an expert YouTube SEO copywriter. Rewrite the following YouTube video description to be more ${tone}.
+
+Rules:
+- Keep the same core information and facts
+- Write in a natural, human tone — no robotic phrasing
+- Structure it well: hook sentence first, then detail, then call to action if appropriate
+- Do NOT add links (links will be added separately)
+- Do NOT add timestamps unless they exist in the source
+- Output ONLY the rewritten description — no preamble, no quotes, no explanation${kwNote}${contextNote}
+
+ORIGINAL DESCRIPTION:
+${desc}`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    const data = await response.json();
+    const text = data.content?.map(b => b.text || '').join('') || '';
+    if (!text) throw new Error('Empty response from AI');
+
+    // Verify locked keywords are present
+    const missing = kws.filter(kw => !text.includes(kw));
+    if (missing.length) {
+      document.getElementById('aiGenMsg').textContent = `⚠ Missing keywords: ${missing.join(', ')} — regenerating…`;
+      // Try once more with stronger emphasis
+      const retryPrompt = prompt + `\n\nWARNING: Your previous response was missing these keywords. You MUST include them EXACTLY: ${missing.map(k => `"${k}"`).join(', ')}`;
+      const r2 = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: retryPrompt }],
+        }),
+      });
+      const d2 = await r2.json();
+      aiResultText = d2.content?.map(b => b.text || '').join('') || text;
+    } else {
+      aiResultText = text;
+    }
+
+    document.getElementById('aiResult').textContent = aiResultText;
+    document.getElementById('aiResult').classList.add('visible');
+    document.getElementById('aiActions').style.display = 'flex';
+  } catch (err) {
+    document.getElementById('aiResult').textContent = 'Error: ' + err.message;
+    document.getElementById('aiResult').classList.add('visible');
+  } finally {
+    document.getElementById('aiGenerating').classList.remove('visible');
+    document.getElementById('enhanceBtn').disabled = false;
+  }
+}
+
+function applyAiResult() {
+  if (!aiResultText) return;
+  document.getElementById('yourDesc').value = aiResultText;
+  updateCharCounter('yourDesc', 'descCounter', 5000);
+  document.getElementById('aiPanel').style.display = 'none';
+}
+
+function copyAiResult() {
+  navigator.clipboard.writeText(aiResultText).catch(() => {});
+}
+
+// ── Client Links ─────────────────────────────────────────────────────────────
+function addAffiliateLink() {
+  const container = document.getElementById('affiliateLinks');
+  const id = 'aff_' + Date.now();
+  const div = document.createElement('div');
+  div.className = 'link-row';
+  div.innerHTML = `
+    <input type="text" class="link-label-input" placeholder="Label (e.g. Amazon)" oninput="previewLinks()">
+    <input type="text" placeholder="https://affiliate-link.com" oninput="previewLinks()">
+    <button class="link-remove" onclick="this.parentElement.remove();previewLinks()">✕</button>
   `;
-  container.appendChild(linkDiv);
+  container.appendChild(div);
+  previewLinks();
 }
 
-function removeLink(id) {
-  document.querySelector(`[data-link-id="${id}"]`).parentElement.remove();
+function addCustomLink() {
+  const container = document.getElementById('customLinksList');
+  const div = document.createElement('div');
+  div.className = 'link-row';
+  div.innerHTML = `
+    <input type="text" class="link-label-input" placeholder="Label" oninput="previewLinks()">
+    <input type="text" placeholder="https://..." oninput="previewLinks()">
+    <button class="link-remove" onclick="this.parentElement.remove();previewLinks()">✕</button>
+  `;
+  container.appendChild(div);
+  previewLinks();
 }
 
-function getCustomLinks() {
-  const inputs = document.querySelectorAll('#customLinks input[type="text"]');
-  const links = [];
-  inputs.forEach(input => {
-    const url = input.value.trim();
-    if (url) links.push(url);
+function buildLinksBlock() {
+  const lines = [];
+
+  const website = document.getElementById('linkWebsite').value.trim();
+  if (website) lines.push(`🌐 Website: ${website}`);
+
+  const insta = document.getElementById('linkInsta').value.trim();
+  if (insta) lines.push(`📸 Instagram: ${insta}`);
+
+  const twitter = document.getElementById('linkTwitter').value.trim();
+  if (twitter) lines.push(`🐦 Twitter/X: ${twitter}`);
+
+  const linkedin = document.getElementById('linkLinkedin').value.trim();
+  if (linkedin) lines.push(`💼 LinkedIn: ${linkedin}`);
+
+  const email = document.getElementById('linkEmail').value.trim();
+  if (email) lines.push(`📧 Business Enquiries: ${email}`);
+
+  // Affiliate
+  document.querySelectorAll('#affiliateLinks .link-row').forEach(row => {
+    const inputs = row.querySelectorAll('input[type="text"]');
+    const label = inputs[0]?.value.trim();
+    const url = inputs[1]?.value.trim();
+    if (url) lines.push(`🔗 ${label || 'Affiliate'}: ${url}`);
   });
-  return links;
+
+  // Custom
+  document.querySelectorAll('#customLinksList .link-row').forEach(row => {
+    const inputs = row.querySelectorAll('input[type="text"]');
+    const label = inputs[0]?.value.trim();
+    const url = inputs[1]?.value.trim();
+    if (url) lines.push(`${label ? label + ': ' : ''}${url}`);
+  });
+
+  const disclaimer = document.getElementById('linkDisclaimer').value.trim();
+  if (disclaimer) lines.push('\n' + disclaimer);
+
+  return lines.length ? '\n\n─────────────────\n' + lines.join('\n') : '';
 }
 
-// ── Remove Links from Text ──
+function previewLinks() {
+  const block = buildLinksBlock();
+  const preview = document.getElementById('linkPreview');
+  if (block.trim()) {
+    preview.textContent = block.trim();
+    preview.classList.add('visible');
+  } else {
+    preview.classList.remove('visible');
+  }
+}
+
+// ── Remove links from text ──────────────────────────────────────────────────
 function removeLinksFromText(text) {
   if (!document.getElementById('autoRemoveLinks').checked) return text;
-  return text.replace(/https?:\/\/[^\s]+/gi, '').replace(/\n\n+/g, '\n').trim();
+  return text.replace(/https?:\/\/[^\s]+/gi, '').replace(/\n\n+/g, '\n\n').trim();
 }
 
-// ── Init ──
+// ── Channel Management ──────────────────────────────────────────────────────
+async function loadChannels() {
+  try {
+    const res = await fetch('/api/channels');
+    if (!res.ok) return;
+    const data = await res.json();
+    availableChannels = data.channels || [];
+    renderChannels();
+  } catch {}
+}
+
+function renderChannels() {
+  const container = document.getElementById('channelsList');
+  if (!availableChannels.length) {
+    container.innerHTML = '<span style="font-size:0.82rem;color:var(--muted2);">No channels found</span>';
+    return;
+  }
+
+  container.innerHTML = availableChannels.map(ch => {
+    const thumb = ch.thumbnail ? `<img src="${esc(ch.thumbnail)}" alt="">` : '';
+    const badge = ch.isOwn
+      ? '<span class="ch-badge own">Own</span>'
+      : '<span class="ch-badge managed">Managed</span>';
+    return `<div class="channel-pill${selectedChannelId === ch.id ? ' active' : ''}" onclick="selectChannel('${esc(ch.id)}', '${esc(ch.title)}')">${thumb}${esc(ch.title)}${badge}</div>`;
+  }).join('');
+
+  // Auto-select first if none selected
+  if (!selectedChannelId && availableChannels.length) {
+    selectChannel(availableChannels[0].id, availableChannels[0].title, false);
+  }
+}
+
+function selectChannel(id, title, rerender = true) {
+  selectedChannelId = id;
+  selectedChannelTitle = title;
+  if (rerender) renderChannels();
+  updateSummary();
+}
+
+// ── Init ────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
   if (params.has('auth') || params.has('auth_error')) window.history.replaceState({}, '', '/');
   await checkAuth();
   setupDragDrop('videoDrop', 'videoFile', onVideoFile);
   setupDragDrop('thumbDrop', 'thumbFile', onThumbFile);
+  previewLinks();
 });
 
 async function checkAuth() {
   try {
     const res = await fetch('/auth/status');
     const data = await res.json();
-    setAuthState(data.authenticated);
-  } catch { setAuthState(false); }
+    setAuthState(data.authenticated, data.email);
+  } catch { setAuthState(false, null); }
 }
 
-function setAuthState(ok) {
+function setAuthState(ok, email) {
   const banner = document.getElementById('authBanner');
   const dot = document.getElementById('authDot');
   banner.className = ok ? 'logged-in' : 'logged-out';
   dot.className = 'auth-dot ' + (ok ? 'on' : 'off');
-  document.getElementById('authTitle').textContent = ok ? 'Connected to YouTube' : 'Not connected';
+  document.getElementById('authTitle').textContent = ok ? `Connected — ${email || 'YouTube'}` : 'Not connected';
   document.getElementById('authSub').textContent = ok
     ? 'YouTube Data API v3 — authenticated'
     : 'Sign in with Google to use the YouTube Data API';
   document.getElementById('authActions').innerHTML = ok
     ? '<a href="/auth/logout" class="btn btn-ghost btn-sm">Sign out</a>'
     : '<a href="/auth/login" class="btn btn-primary">Sign in with Google</a>';
-  if (ok) document.getElementById('step1').classList.remove('locked');
-  else document.getElementById('step1').classList.add('locked');
+
+  if (ok) {
+    document.getElementById('step1').classList.remove('locked');
+    document.getElementById('channelBanner').classList.add('visible');
+    loadChannels();
+  } else {
+    document.getElementById('step1').classList.add('locked');
+    document.getElementById('channelBanner').classList.remove('visible');
+  }
 }
 
-// ── Search ──
+// ── Search ──────────────────────────────────────────────────────────────────
 async function searchYouTube() {
   const idea = document.getElementById('ideaInput').value.trim();
   const status = document.getElementById('searchStatus');
@@ -619,7 +990,7 @@ async function searchYouTube() {
       const card = document.createElement('div');
       card.className = 'video-card';
       card.innerHTML = `
-        <img src="${v.thumbnail||''}" alt="" loading="lazy">
+        <img src="${v.thumbnail || ''}" alt="" loading="lazy">
         <div class="video-info">
           <div class="video-title">${esc(v.title)}</div>
           <div class="video-meta">${esc(v.channelTitle)} · ${new Date(v.publishedAt).getFullYear()}</div>
@@ -630,7 +1001,7 @@ async function searchYouTube() {
   } catch (err) { setStatus(status, 'Error: ' + err.message, 'error'); }
 }
 
-// ── Fetch metadata ──
+// ── Fetch metadata ───────────────────────────────────────────────────────────
 async function selectVideo(videoId, btn) {
   document.querySelectorAll('.video-card').forEach(c => c.classList.remove('selected'));
   btn.closest('.video-card').classList.add('selected');
@@ -659,9 +1030,7 @@ async function selectVideo(videoId, btn) {
     if (sourceCategoryId && CATEGORY_NAMES[sourceCategoryId]) {
       document.getElementById('srcCategoryName').textContent = CATEGORY_NAMES[sourceCategoryId];
       catWrap.style.display = 'block';
-    } else {
-      catWrap.style.display = 'none';
-    }
+    } else { catWrap.style.display = 'none'; }
 
     const s = data.statistics || {};
     document.getElementById('statsRow').innerHTML = [
@@ -672,51 +1041,51 @@ async function selectVideo(videoId, btn) {
 
     document.getElementById('metaContent').style.display = 'block';
     setStatus(status, '', '');
-    done('sn2');
+    markDone('sn2');
 
     document.getElementById('yourTitle').value = data.title;
     document.getElementById('yourDesc').value = data.description || '';
     document.getElementById('yourTags').value = rawTags.join(', ');
+    updateCharCounter('yourTitle', 'titleCounter', 100);
+    updateCharCounter('yourDesc', 'descCounter', 5000);
+    updateCharCounter('yourTags', 'tagsCounter', 500);
     document.getElementById('step3').classList.remove('locked');
     btn.textContent = 'Selected ✓';
 
     if (sourceCategoryId) {
       const sel = document.getElementById('categoryId');
       const opt = sel.querySelector(`option[value="${sourceCategoryId}"]`);
-      if (opt) {
-        sel.value = sourceCategoryId;
-        document.getElementById('categoryAutoLabel').style.display = 'inline';
-      }
+      if (opt) { sel.value = sourceCategoryId; document.getElementById('categoryAutoLabel').style.display = 'inline'; }
     }
-
   } catch (err) {
     setStatus(status, 'Error: ' + err.message, 'error');
     btn.textContent = 'Use this';
   }
 }
 
-// ── Step 3 → Step 4 ──
+// ── Step 3 → Step 4 ──────────────────────────────────────────────────────────
 function goToUpload() {
   const title = document.getElementById('yourTitle').value.trim();
   if (!title) { alert('Please add a title.'); return; }
-  done('sn3');
+  markDone('sn3');
   document.getElementById('step4').classList.remove('locked');
-  
-  const cleanTitle = removeLinksFromText(title);
-  document.getElementById('sumTitle').textContent = cleanTitle;
-  
-  const tagsArr = document.getElementById('yourTags').value.split(',').map(t=>t.trim()).filter(Boolean);
-  document.getElementById('sumTags').textContent = tagsArr.length
-    ? tagsArr.slice(0,5).join(', ') + (tagsArr.length > 5 ? ` +${tagsArr.length-5} more` : '')
-    : 'none';
-
-  const schedTime = document.getElementById('scheduleTime').value;
-  document.getElementById('sumSchedule').textContent = schedTime ? new Date(schedTime).toLocaleString() : 'Immediately';
-  
+  updateSummary();
   document.getElementById('step4').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── File inputs ──
+function updateSummary() {
+  const title = removeLinksFromText(document.getElementById('yourTitle').value.trim());
+  document.getElementById('sumTitle').textContent = title;
+  const tagsArr = document.getElementById('yourTags').value.split(',').map(t => t.trim()).filter(Boolean);
+  document.getElementById('sumTags').textContent = tagsArr.length
+    ? tagsArr.slice(0, 5).join(', ') + (tagsArr.length > 5 ? ` +${tagsArr.length - 5} more` : '')
+    : 'none';
+  const schedTime = document.getElementById('scheduleTime').value;
+  document.getElementById('sumSchedule').textContent = schedTime ? new Date(schedTime).toLocaleString() : 'Immediately';
+  document.getElementById('sumChannel').textContent = selectedChannelTitle || 'My Channel';
+}
+
+// ── File inputs ──────────────────────────────────────────────────────────────
 function onVideoFile(input) {
   const file = input.files?.[0];
   if (!file) return;
@@ -742,8 +1111,7 @@ function setupDragDrop(zoneId, inputId, handler) {
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
   zone.addEventListener('drop', e => {
-    e.preventDefault();
-    zone.classList.remove('dragover');
+    e.preventDefault(); zone.classList.remove('dragover');
     const input = document.getElementById(inputId);
     if (e.dataTransfer.files.length) {
       const dt = new DataTransfer();
@@ -754,11 +1122,10 @@ function setupDragDrop(zoneId, inputId, handler) {
   });
 }
 
-// ── Progress ──
+// ── Progress ──────────────────────────────────────────────────────────────────
 function setStage(id, state) {
   const el = document.getElementById('stage-' + id);
-  if (!el) return;
-  el.className = 'stage-pill' + (state ? ' ' + state : '');
+  if (el) el.className = 'stage-pill' + (state ? ' ' + state : '');
 }
 
 function setProgressPct(pct) {
@@ -766,20 +1133,21 @@ function setProgressPct(pct) {
   document.getElementById('progressPct').textContent = pct + '%';
 }
 
-// ── Upload ──
+// ── Upload ───────────────────────────────────────────────────────────────────
 async function startUpload() {
   const videoInput = document.getElementById('videoFile');
   const thumbInput = document.getElementById('thumbFile');
   const status = document.getElementById('uploadStatus');
   const btn = document.getElementById('uploadBtn');
-
   if (!videoInput.files?.[0]) { setStatus(status, 'Please select an MP4 file.', 'error'); return; }
 
-  const title = removeLinksFromText(document.getElementById('yourTitle').value.trim());
-  const description = removeLinksFromText(document.getElementById('yourDesc').value);
-  const customLinksStr = getCustomLinks().join('\n');
-  const finalDescription = description + (customLinksStr ? '\n\n' + customLinksStr : '');
-  
+  const rawTitle = document.getElementById('yourTitle').value.trim();
+  const rawDesc  = document.getElementById('yourDesc').value;
+  const title = removeLinksFromText(rawTitle);
+  const baseDesc = removeLinksFromText(rawDesc);
+  const linksBlock = buildLinksBlock();
+  const finalDescription = baseDesc + linksBlock;
+
   const tags = document.getElementById('yourTags').value;
   const categoryId = document.getElementById('categoryId').value;
   const privacyStatus = document.querySelector('input[name="privacy"]:checked')?.value || 'private';
@@ -807,6 +1175,7 @@ async function startUpload() {
   formData.append('privacyStatus', privacyStatus);
   formData.append('madeForKids', madeForKids);
   if (scheduleTime) formData.append('publishAt', new Date(scheduleTime).toISOString());
+  if (selectedChannelId) formData.append('targetChannelId', selectedChannelId);
 
   try {
     const response = await fetch('/api/upload', { method: 'POST', body: formData });
@@ -814,17 +1183,14 @@ async function startUpload() {
       const err = await response.json().catch(() => ({ error: 'Upload failed' }));
       throw new Error(err.error || 'Upload failed');
     }
-
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
-
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
+      const lines = buffer.split('\n'); buffer = lines.pop();
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           try { handleUploadEvent(JSON.parse(line.slice(6))); } catch {}
@@ -845,36 +1211,21 @@ function handleUploadEvent(evt) {
 
   if (evt.stage === 'uploading') {
     const pct = evt.progress || 0;
-    if (pct <= 2) {
-      setStage('init', 'complete');
-      setStage('upload', 'active');
-    }
+    if (pct <= 2) { setStage('init', 'complete'); setStage('upload', 'active'); }
     setProgressPct(pct);
     label.textContent = `Uploading… ${pct}%`;
     msg.textContent = evt.message || '';
-
   } else if (evt.stage === 'uploaded') {
-    setProgressPct(100);
-    setStage('upload', 'complete');
-    label.textContent = 'Upload complete!';
-    msg.textContent = evt.message || '';
-
+    setProgressPct(100); setStage('upload', 'complete');
+    label.textContent = 'Upload complete!'; msg.textContent = evt.message || '';
   } else if (evt.stage === 'thumbnail') {
-    setStage('thumb', 'active');
-    label.textContent = 'Setting thumbnail…';
-    msg.textContent = evt.message || '';
-
+    setStage('thumb', 'active'); label.textContent = 'Setting thumbnail…'; msg.textContent = evt.message || '';
   } else if (evt.stage === 'thumbnail_warn') {
-    setStage('thumb', '');
-    msg.textContent = evt.message || '';
-
+    setStage('thumb', ''); msg.textContent = evt.message || '';
   } else if (evt.stage === 'done') {
-    setProgressPct(100);
-    bar.classList.add('done');
-    setStage('thumb', 'complete');
-    setStage('done', 'complete');
-    label.textContent = '✅ Done!';
-    msg.textContent = '';
+    setProgressPct(100); bar.classList.add('done');
+    setStage('thumb', 'complete'); setStage('done', 'complete');
+    label.textContent = '✅ Done!'; msg.textContent = '';
     setTimeout(() => {
       document.getElementById('progressWrap').style.display = 'none';
       const doneCard = document.getElementById('doneCard');
@@ -883,10 +1234,9 @@ function handleUploadEvent(evt) {
         <a href="${evt.url}" target="_blank" class="btn btn-secondary btn-sm">▶ Watch on YouTube</a>
         <a href="${evt.studioUrl}" target="_blank" class="btn btn-ghost btn-sm">✏️ Edit in Studio</a>
       `;
-      done('sn4');
+      markDone('sn4');
       loadDashboard();
     }, 600);
-
   } else if (evt.stage === 'error') {
     document.getElementById('progressWrap').style.display = 'none';
     setStatus(document.getElementById('uploadStatus'), 'Error: ' + evt.message, 'error');
@@ -894,88 +1244,53 @@ function handleUploadEvent(evt) {
   }
 }
 
-// ── Dashboard ──
+// ── Dashboard ─────────────────────────────────────────────────────────────────
 async function loadDashboard() {
   try {
     const [uploads, searches] = await Promise.all([
       fetch('/api/history/uploads').then(r => r.json()),
       fetch('/api/history/searches').then(r => r.json()),
     ]);
-
-    const uploadCount = uploads.uploads?.length || 0;
+    const uploadCount  = uploads.uploads?.length || 0;
     const successCount = uploads.uploads?.filter(u => u.upload_status === 'success').length || 0;
-    const searchCount = searches.searches?.length || 0;
-
+    const searchCount  = searches.searches?.length || 0;
     document.getElementById('dashboardCards').innerHTML = `
-      <div class="dashboard-card">
-        <h3>Total Uploads</h3>
-        <div class="value">${uploadCount}</div>
-        <p>${successCount} successful</p>
-      </div>
-      <div class="dashboard-card">
-        <h3>Searches</h3>
-        <div class="value">${searchCount}</div>
-        <p>Metadata lookups</p>
-      </div>
-      <div class="dashboard-card">
-        <h3>This Month</h3>
-        <div class="value" id="monthCount">0</div>
-        <p>Videos uploaded</p>
-      </div>
+      <div class="dashboard-card"><h3>Total Uploads</h3><div class="value">${uploadCount}</div><p>${successCount} successful</p></div>
+      <div class="dashboard-card"><h3>Searches</h3><div class="value">${searchCount}</div><p>Metadata lookups</p></div>
+      <div class="dashboard-card"><h3>This Month</h3><div class="value" id="monthCount">0</div><p>Videos uploaded</p></div>
     `;
-
-    // Uploads table
     const uploadsBody = document.getElementById('uploadsBody');
     if (uploads.uploads?.length) {
       uploadsBody.innerHTML = uploads.uploads.slice(0, 10).map(u => `
         <tr>
-          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">${esc(u.title)}</td>
+          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;">${esc(u.title)}</td>
+          <td style="font-size:0.75rem;color:var(--muted2);">${esc(u.target_channel_id || 'Own')}</td>
           <td><span class="status-badge ${u.upload_status === 'success' ? 'success' : 'pending'}">${u.upload_status}</span></td>
           <td>${new Date(u.uploaded_at).toLocaleDateString()}</td>
           <td><a href="${u.youtube_url}" target="_blank" style="color:var(--accent);text-decoration:none;font-size:0.75rem;">View →</a></td>
         </tr>
       `).join('');
     }
-
-    // Searches table
     const searchesBody = document.getElementById('searchesBody');
     if (searches.searches?.length) {
       searchesBody.innerHTML = searches.searches.slice(0, 10).map(s => `
-        <tr>
-          <td>${esc(s.query)}</td>
-          <td>${s.results_count || 0}</td>
-          <td>${new Date(s.searched_at).toLocaleDateString()}</td>
-        </tr>
+        <tr><td>${esc(s.query)}</td><td>${s.results_count || 0}</td><td>${new Date(s.searched_at).toLocaleDateString()}</td></tr>
       `).join('');
     }
-
-    // This month count
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const thisMonth = uploads.uploads?.filter(u => new Date(u.uploaded_at) >= monthStart && u.upload_status === 'success').length || 0;
     document.getElementById('monthCount').textContent = thisMonth;
-
-  } catch (err) {
-    console.error('Dashboard error:', err);
-  }
+  } catch (err) { console.error('Dashboard error:', err); }
 }
 
-// ── Helpers ──
-function done(id) {
-  const el = document.getElementById(id);
-  el.className = 'step-num done';
-  el.textContent = '✓';
-}
-
-function setStatus(el, msg, type, spinner = false) {
-  el.className = 'status ' + type;
-  el.innerHTML = (spinner ? '<div class="spinner"></div>' : '') + esc(msg);
-}
-
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function markDone(id) { const el = document.getElementById(id); el.className = 'step-num done'; el.textContent = '✓'; }
+function setStatus(el, msg, type, spinner = false) { el.className = 'status ' + type; el.innerHTML = (spinner ? '<div class="spinner"></div>' : '') + esc(msg); }
 function esc(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
 function fmt(n) { return Number(n).toLocaleString(); }
-function copyField(id) { navigator.clipboard.writeText(document.getElementById(id).value !== undefined ? document.getElementById(id).value : document.getElementById(id).textContent).catch(()=>{}); }
-function copyTags() { navigator.clipboard.writeText(rawTags.join(', ')).catch(()=>{}); }
+function copyField(id) { const el = document.getElementById(id); navigator.clipboard.writeText(el.value !== undefined ? el.value : el.textContent).catch(() => {}); }
+function copyTags() { navigator.clipboard.writeText(rawTags.join(', ')).catch(() => {}); }
 </script>
 </body>
 </html>

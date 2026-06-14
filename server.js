@@ -67,16 +67,12 @@ function getAuthedClient(tokens) {
 }
 
 // ─── Token Refresh Helper ──────────────────────────────────────────────────
-// Ensures the access token in `session.tokens` is valid. If expired (or
-// close to expiry), refreshes it using the stored refresh_token, persists
-// the new tokens to Supabase, and returns the refreshed token set so the
-// caller can re-issue the session cookie.
 async function getValidTokens(session) {
   const oauth2Client = getOAuth2Client();
   oauth2Client.setCredentials(session.tokens);
 
   const expiry = session.tokens?.expiry_date;
-  const isExpired = !expiry || expiry < Date.now() + 60 * 1000; // 1 min buffer
+  const isExpired = !expiry || expiry < Date.now() + 60 * 1000;
 
   if (!isExpired) {
     return { oauth2Client, tokens: session.tokens, refreshed: false };
@@ -88,14 +84,11 @@ async function getValidTokens(session) {
 
   try {
     const { credentials } = await oauth2Client.refreshAccessToken();
-
-    // Preserve refresh_token if Google doesn't return a new one
     const newTokens = {
       ...session.tokens,
       ...credentials,
       refresh_token: credentials.refresh_token || session.tokens.refresh_token,
     };
-
     oauth2Client.setCredentials(newTokens);
 
     if (session.userId) {
@@ -107,7 +100,6 @@ async function getValidTokens(session) {
           token_expiry: newTokens.expiry_date ? new Date(newTokens.expiry_date).toISOString() : null,
         })
         .eq('id', session.userId);
-
       if (dbErr) console.warn('Token refresh DB update error:', dbErr.message);
     }
 
@@ -117,8 +109,6 @@ async function getValidTokens(session) {
   }
 }
 
-// Refresh session tokens for a request and re-issue the cookie if needed.
-// Returns the (possibly refreshed) tokens to use for this request.
 async function ensureFreshSession(req, res, session) {
   const { tokens, refreshed } = await getValidTokens(session);
   if (refreshed) {
@@ -138,6 +128,8 @@ app.get('/auth/login', (req, res) => {
       'https://www.googleapis.com/auth/youtube.upload',
       'https://www.googleapis.com/auth/youtube.force-ssl',
       'https://www.googleapis.com/auth/userinfo.email',
+      // Required for listing channels the user manages via Brand Accounts
+      'https://www.googleapis.com/auth/youtubepartner-channel-audit',
     ],
     prompt: 'consent',
   });
@@ -205,6 +197,74 @@ app.get('/auth/status', (req, res) => {
   res.json({ authenticated: !!session, email: session?.email || null });
 });
 
+// ─── API: List All Managed Channels ───────────────────────────────────────
+// Returns own channel + any Brand Account channels this Google account manages.
+// The YouTube Data API does not expose Brand Account management directly, so we
+// use the People API / account-management patterns available to the user's token.
+// In practice: list channels via `mine=true` (own channel) PLUS attempt to list
+// channels accessible via the token using maxResults paging.
+app.get('/api/channels', async (req, res) => {
+  const session = getSession(req);
+  if (!session) return res.status(401).json({ error: 'Not authenticated' });
+
+  try {
+    await ensureFreshSession(req, res, session);
+    const youtube = google.youtube({ version: 'v3', auth: getAuthedClient(session.tokens) });
+
+    // 1. Own channel
+    const ownResp = await youtube.channels.list({
+      part: ['snippet', 'statistics'],
+      mine: true,
+      maxResults: 50,
+    });
+
+    const channels = (ownResp.data.items || []).map(ch => ({
+      id: ch.id,
+      title: ch.snippet?.title || 'Unknown',
+      thumbnail: ch.snippet?.thumbnails?.default?.url || null,
+      subscriberCount: ch.statistics?.subscriberCount || null,
+      isOwn: true,
+    }));
+
+    // 2. Try to get manageable channels (Brand Accounts).
+    // This uses the YouTube channel memberships endpoint — channels that the
+    // authenticated user's Google account has manager/owner access to via
+    // Brand Accounts show up here when using managedByMe=true.
+    try {
+      const managedResp = await youtube.channels.list({
+        part: ['snippet', 'statistics'],
+        managedByMe: true,
+        onBehalfOfContentOwner: undefined, // CMS partners only — skip
+        maxResults: 50,
+      });
+
+      const managedIds = new Set(channels.map(c => c.id));
+      for (const ch of (managedResp.data.items || [])) {
+        if (!managedIds.has(ch.id)) {
+          channels.push({
+            id: ch.id,
+            title: ch.snippet?.title || 'Unknown',
+            thumbnail: ch.snippet?.thumbnails?.default?.url || null,
+            subscriberCount: ch.statistics?.subscriberCount || null,
+            isOwn: false,
+          });
+        }
+      }
+    } catch (managedErr) {
+      // managedByMe requires content owner access — silently ignore if unavailable
+      console.log('managedByMe not available (normal for non-CMS accounts):', managedErr.message);
+    }
+
+    res.json({ channels });
+  } catch (err) {
+    console.error('Channels list error:', err.message);
+    if (err.message.includes('sign in again')) {
+      return res.status(401).json({ error: err.message });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── API: Search ───────────────────────────────────────────────────────────
 app.get('/api/search', async (req, res) => {
   const session = getSession(req);
@@ -236,9 +296,7 @@ app.get('/api/search', async (req, res) => {
     res.json({ videos });
   } catch (err) {
     console.error('Search error:', err.message);
-    if (err.message.includes('sign in again')) {
-      return res.status(401).json({ error: err.message });
-    }
+    if (err.message.includes('sign in again')) return res.status(401).json({ error: err.message });
     res.status(500).json({ error: err.message });
   }
 });
@@ -294,14 +352,12 @@ app.get('/api/video/:videoId', async (req, res) => {
     res.json(metadata);
   } catch (err) {
     console.error('Video fetch error:', err.message);
-    if (err.message.includes('sign in again')) {
-      return res.status(401).json({ error: err.message });
-    }
+    if (err.message.includes('sign in again')) return res.status(401).json({ error: err.message });
     res.status(500).json({ error: err.message });
   }
 });
 
-// ─── API: Upload (with scheduling and made-for-kids) ──────────────────────
+// ─── API: Upload (with channel targeting + scheduling + made-for-kids) ─────
 app.post('/api/upload', upload.fields([
   { name: 'video', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 },
@@ -312,10 +368,12 @@ app.post('/api/upload', upload.fields([
   const videoFile = req.files?.video?.[0];
   if (!videoFile) return res.status(400).json({ error: 'No video file provided' });
 
-  const { title, description, tags, categoryId, privacyStatus, madeForKids, publishAt } = req.body;
+  const {
+    title, description, tags, categoryId, privacyStatus,
+    madeForKids, publishAt,
+    targetChannelId, // NEW: channel to upload to (own or managed)
+  } = req.body;
 
-  // Make sure the access token is valid BEFORE we start the (potentially
-  // long-running) upload, and re-issue the cookie if it was refreshed.
   let accessToken;
   try {
     accessToken = await ensureFreshSession(req, res, session);
@@ -352,13 +410,14 @@ app.post('/api/upload', upload.fields([
 
     send({ stage: 'uploading', progress: 0, message: 'Initialising upload…' });
 
-    // Build upload request
     const uploadBody = {
       snippet: {
         title: title || 'My Video',
         description: description || '',
         tags: tagsArr,
         categoryId: categoryId || '22',
+        // If uploading to a specific channel (brand account), set channelId
+        ...(targetChannelId ? { channelId: targetChannelId } : {}),
       },
       status: {
         privacyStatus: pubStatus,
@@ -366,18 +425,20 @@ app.post('/api/upload', upload.fields([
       },
     };
 
-    const initResp = await axios.post(
-      'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
-      uploadBody,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'X-Upload-Content-Type': mimeType,
-          'X-Upload-Content-Length': fileSize,
-        },
-      }
-    );
+    // Build upload URL — add onBehalfOfContentOwnerChannel if targeting a managed channel
+    let uploadUrl = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status';
+    if (targetChannelId) {
+      uploadUrl += `&onBehalfOfContentOwnerChannel=${encodeURIComponent(targetChannelId)}`;
+    }
+
+    const initResp = await axios.post(uploadUrl, uploadBody, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'X-Upload-Content-Type': mimeType,
+        'X-Upload-Content-Length': fileSize,
+      },
+    });
 
     const uploadUri = initResp.headers.location;
     if (!uploadUri) throw new Error('YouTube did not return an upload URI');
@@ -422,18 +483,18 @@ app.post('/api/upload', upload.fields([
     if (thumbFile) {
       try {
         send({ stage: 'thumbnail', message: 'Setting thumbnail…' });
-        await axios.post(
-          `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${encodeURIComponent(youtubeVideoId)}&uploadType=media`,
-          thumbFile.buffer,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': thumbFile.mimetype || 'image/jpeg',
-              'Content-Length': thumbFile.size,
-            },
-            maxBodyLength: Infinity,
-          }
-        );
+        let thumbUrl = `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${encodeURIComponent(youtubeVideoId)}&uploadType=media`;
+        if (targetChannelId) {
+          thumbUrl += `&onBehalfOfContentOwnerChannel=${encodeURIComponent(targetChannelId)}`;
+        }
+        await axios.post(thumbUrl, thumbFile.buffer, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': thumbFile.mimetype || 'image/jpeg',
+            'Content-Length': thumbFile.size,
+          },
+          maxBodyLength: Infinity,
+        });
       } catch (thumbErr) {
         send({ stage: 'thumbnail_warn', message: 'Thumbnail upload failed (video still uploaded).' });
         console.warn('Thumbnail error:', thumbErr.response?.data || thumbErr.message);
@@ -463,7 +524,6 @@ app.post('/api/upload', upload.fields([
       }
     }
 
-    // Log to Supabase
     if (session.userId) {
       const { error: dbErr } = await supabase.from('upload_history').insert({
         user_id: session.userId,
@@ -477,6 +537,7 @@ app.post('/api/upload', upload.fields([
         youtube_url: `https://www.youtube.com/watch?v=${youtubeVideoId}`,
         made_for_kids: madeForKids === 'true' || madeForKids === true,
         scheduled_at: scheduledTime,
+        target_channel_id: targetChannelId || null,
       });
       if (dbErr) console.warn('DB log error:', dbErr.message);
     }
@@ -527,7 +588,6 @@ app.get('/api/history/saved', async (req, res) => {
 });
 
 // ─── Scheduled Upload Processing ──────────────────────────────────────────
-// Run every minute to check for scheduled uploads
 cron.schedule('* * * * *', async () => {
   try {
     const now = new Date();
@@ -540,43 +600,26 @@ cron.schedule('* * * * *', async () => {
       .is('published_at', null)
       .limit(10);
 
-    if (error) {
-      console.error('Schedule check error:', error.message);
-      return;
-    }
+    if (error) { console.error('Schedule check error:', error.message); return; }
 
     for (const up of scheduled || []) {
       try {
         const { data: user } = await supabase.from('users').select('*').eq('id', up.user_id).single();
         if (!user) continue;
-
-        // Build a token set compatible with getValidTokens / getAuthedClient
         let tokens = {
           access_token: user.access_token,
           refresh_token: user.refresh_token,
           expiry_date: user.token_expiry ? new Date(user.token_expiry).getTime() : 0,
         };
-
         const { oauth2Client } = await getValidTokens({ userId: user.id, tokens });
         const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
-
-        // Update privacy status from scheduled (private) to public
         await youtube.videos.update({
           part: ['status'],
-          requestBody: {
-            id: up.youtube_video_id,
-            status: {
-              privacyStatus: 'public',
-            },
-          },
+          requestBody: { id: up.youtube_video_id, status: { privacyStatus: 'public' } },
         });
-
-        // Mark as published
         await supabase.from('upload_history').update({
-          published_at: now.toISOString(),
-          privacy_status: 'public',
+          published_at: now.toISOString(), privacy_status: 'public',
         }).eq('id', up.id);
-
         console.log(`Published scheduled video: ${up.youtube_video_id}`);
       } catch (err) {
         console.error(`Error publishing ${up.youtube_video_id}:`, err.message);
